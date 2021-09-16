@@ -63,7 +63,8 @@ class DJ(commands.Cog):
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         if baseBoosted:
             ffmpeg_final_options = ffmpeg_options.copy()
-            ffmpeg_final_options.options = ffmpeg_final_options.options + " -af bass=g=50"
+            os = "options"
+            ffmpeg_final_options[os] = ffmpeg_final_options[os] + " -af bass=g=50"
         else:
             ffmpeg_final_options = ffmpeg_options.copy()
         source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data)
