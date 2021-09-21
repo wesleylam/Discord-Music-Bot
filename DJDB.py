@@ -9,6 +9,11 @@ class DJDB():
             user = user,
             password = password,
             database = db_name,
+
+            # use unicode (eg: emoji)
+            use_unicode = True,
+            charset = 'utf8mb4',
+            collation = 'utf8mb4_unicode_520_ci',
         )
         self.cursor = self.db.cursor()
 
@@ -27,7 +32,7 @@ class DJDB():
         vID = self.find_query_match(query)
         if vID is None:
             # add if no entry
-            sql = f"INSERT INTO YtQuery (Query, vID) VALUES ('{query}', '{songInfo.vID}')"
+            sql = f"INSERT INTO YtQuery (Query, vID) VALUES (\"{query}\", \"{songInfo.vID}\")"
         elif vID == songInfo.vID:
             # skip if duplicate
             return
@@ -54,7 +59,7 @@ class DJDB():
 
     # query song
     def find_song_match(self, vID, exist = False):
-        result = self.db_query(f"SELECT * FROM YtVideo WHERE vID = '{vID}'")
+        result = self.db_query(f"SELECT * FROM YtVideo WHERE vID = \"{vID}\"")
         if len(result) <= 0: # no result
             return None
         else: 
@@ -62,7 +67,7 @@ class DJDB():
 
     # try to match query from db
     def find_query_match(self, query):
-        result = self.db_query(f"SELECT vID FROM YtQuery WHERE Query = '{query}'")
+        result = self.db_query(f"SELECT vID FROM YtQuery WHERE Query = \"{query}\"")
         if len(result) <= 0: # no result
             return None
         else: 

@@ -8,4 +8,4 @@ class SongInfo():
         return self.vID, self.title, self.channelID
 
     def stringify_info(self):
-        return ", ".join([f"'{i}'" for i in self.get_all_info()])
+        return ", ".join([f"\"{i}\"" for i in self.get_all_info()])
