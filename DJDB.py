@@ -19,40 +19,35 @@ class DJDB():
         return result
 
 
-    # insert query
+    # insert / update query
     def add_query(self, query, songInfo):
-        if not self.find_song_match(songInfo.vID):
-            # song not exist
-            self.insert_song(songInfo)
+        # add song to db (if not exist)
+        self.insert_song(songInfo)
 
-        sql = "INSERT INTO YtQuery (Query, vID) VALUES (%s, %s)"
-        val = (query, songInfo.vID)
+        vID = self.find_query_match(query)
+        if vID is None:
+            # add if no entry
+            sql = f"INSERT INTO YtQuery (Query, vID) VALUES ('{query}', '{songInfo.vID}')"
+        elif vID == songInfo.vID:
+            # skip if duplicate
+            return
+        else:
+            # no duplicate but different vID -> update
+            sql = f"UPDATE YtQuery SET vID = '{songInfo.vID}' WHERE Query = '{query}'"
 
-        self.cursor.execute(sql, val)
+        self.cursor.execute(sql)
         self.db.commit()
-
-
-    # change query
-    def change_query(self, query, vID):
-        pass
 
     # insert one song
     def insert_song(self, songInfo, qcount = 1, songVol = default_init_vol):
+        if self.find_song_match(songInfo.vID):
+            # skip if song exist
+            return
+
         songVol = songVol * 100 # as percentage (need int)
         sql = f"INSERT INTO YtVideo (vID, Title, ChannelID, Qcount, SongVol) VALUES ({songInfo.stringify_info()}, {qcount}, {songVol})"
         self.cursor.execute(sql)
         self.db.commit()
-
-    # bunch insert songs
-    def insert_songs(self, songInfos): # songs = [(vID, title, channelID, qcount, songVol)]
-        sql = "INSERT INTO YtVideo (vID, Title, ChannelID, Qcount, SongVol) VALUES (%s, %s, %s, %s, %s)"
-        val = []
-        # for songInfo in songInfos:
-        #     val.append( song)
-
-        self.cursor.executemany(sql, val)
-        self.db.commit()
-
 
 
 
