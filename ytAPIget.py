@@ -1,3 +1,4 @@
+from SongInfo import SongInfo
 import requests
 import json
 import os
@@ -32,11 +33,15 @@ def yt_search(q):
         item = items[i]
         kind = item['id']['kind'].split('#')[1]
         if kind == "video":
-            # item['snippet']['title'], 
-            return item['id'][kind + 'Id']
+            return SongInfo(
+                item['id'][kind + 'Id'], 
+                item['snippet']['title'], 
+                item['snippet']['channelId']
+            )
     
     return None
 
 
 if __name__ == "__main__":
-    print(yt_search("hunter king ost"))
+    print(yt_search("test"))
+    'https://youtube.googleapis.com/youtube/v3/playlistItems?playlistId='

@@ -10,6 +10,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.title = data.get('title')
         self.url = data.get('url')
 
+# voice source object playing from local directory
 class StaticSource(discord.PCMVolumeTransformer):
     def __init__(self, source, volume=default_init_vol, title="No title"):
         super().__init__(source, volume)

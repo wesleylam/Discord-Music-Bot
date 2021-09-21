@@ -1,3 +1,4 @@
+from SongInfo import SongInfo
 import discord
 from discord.ext import commands
 from discord_components import ComponentsBot
@@ -10,12 +11,14 @@ from YTDLSource import YTDLSource, StaticSource
 from helper import *
 from config import *
 from options import ytdl_format_options, ffmpeg_options
+from DJDB import DJDB
 
 
 class DJ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.vcControls = {} # guild.id: vcControl object
+        self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
 
     # -------------------- Join voice channel --------------------
     @commands.command()
@@ -98,10 +101,20 @@ class DJ(commands.Cog):
                 # search for url in youtube API
                 search_term = (" ".join(s)).lower()
                 await ctx.send("Searching: " + search_term)
-                vid = yt_search(search_term)
+                
+                # fetch vid from either db or youtube api search
+                match = self.djdb.find_query_match(search_term)
+                if match:
+                    vid = match
+                else:                    
+                    info = yt_search(search_term)
+                    if not info: raise Exception("Nothing found in video form")
+                    vid = info.vID
+                    # add query to db
+                    self.djdb.add_query(search_term, info)
                 url = "https://youtube.com/watch?v=" + vid
-                if url == None: 
-                    raise Exception("Nothing found in video form")
+
+            # DB: INC Qcount
 
             # compile
             source = await self.compile_yt_source(url)
