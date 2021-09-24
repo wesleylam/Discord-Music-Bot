@@ -111,10 +111,10 @@ class DJDB():
     # query random song
     def find_rand_song(self, dj = True):
         if dj:
-            result = self.db_query(f"SELECT vID FROM YtVideo")
+            result = self.db_query(f"SELECT vID FROM YtVideo ORDER BY RAND() LIMIT 1")
         else: 
-            result = self.db_query(f"SELECT vID FROM YtVideo WHERE DJable = '{1}'")
-        return random.choice(result)[0]
+            result = self.db_query(f"SELECT vID FROM YtVideo WHERE DJable = '{1}' ORDER BY RAND() LIMIT 1")
+        return result[0][0]
 
 
     # query song

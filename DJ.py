@@ -13,12 +13,12 @@ from config import *
 from options import ytdl_format_options, ffmpeg_options
 from DJDB import DJDB
 
-
 class DJ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.vcControls = {} # guild.id: vcControl object
         self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
+        self.bot_status(False)
 
 
     # ---------------------------- MESSAGING --------------------------- # 
@@ -57,12 +57,17 @@ class DJ(commands.Cog):
     # -------------------- play from youtube url / default if no url -------------------- # 
     # COMMAND: dj
     @commands.command()
-    async def dj(self, ctx, type = None):
+    async def dj(self, ctx, type = True):
         vc = ctx.voice_client
         if vc is None:
             await self.join(ctx)
             vc = ctx.voice_client
-        self.vcControls[ctx.guild.id].dj = True
+
+        # set vccontrol and bot status
+        self.vcControls[ctx.guild.id].set_dj( type )
+        await self.bot_status(dj = type)
+
+        # play next vc
         await self.vcControls[ctx.guild.id].next(vc)
 
     # COMMAND: p
@@ -174,13 +179,13 @@ class DJ(commands.Cog):
     # COMMAND: skip
     @commands.command()
     async def skip(self, ctx):
-        await self.vcControls[ctx.guild.id].skip(ctx.voice_client)
+        await self.vcControls[ctx.guild.id].skip(ctx.voice_client, ctx.author)
 
     # COMMAND: remove
     @commands.command()
     async def remove(self, ctx, *args):
         k = " ".join(args)
-        await self.vcControls[ctx.guild.id].remove_track(ctx.voice_client, k)
+        await self.vcControls[ctx.guild.id].remove_track(ctx.voice_client, k, ctx.author)
 
     # COMMAND: clear
     @commands.command()
@@ -234,7 +239,7 @@ class DJ(commands.Cog):
                 info = vid
 
             self.djdb.add_query(q, info)
-            await self.notify(ctx, f"Added binding \n{q} -> https://youtu.be/{vID}", del_sec=None)
+            await self.notify(ctx, f"Added binding \n{q} -> https://youtu.be/{vid}", del_sec=None)
         else:
             # query binding if url not provided
             vID = self.djdb.find_query_match(q)
@@ -252,15 +257,44 @@ class DJ(commands.Cog):
     # -------------------------------------------------------------------------------------------- # 
     # ------------------------------------- EVENT HANDLING --------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
-    
+    async def bot_status(self, dj):
+        if dj: 
+            await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name="DJ"))
+        else:
+            await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="play"))
+
+
+
+    # for other section: 1. encore
+    @commands.Cog.listener()
+    async def on_button_click(self, interaction):
+        ctx = await self.bot.get_context(interaction.message)
+
+        id = interaction.component.id
+
+        actions = {
+            'encore': self.repeat_btn_handler, 
+        }
+        for action, handler in actions.items():
+            if action in id[:len(action)]:
+                await handler(ctx, id[len(action)+1:])
+                await interaction.respond()
+                return # maybe break
+
+    # --------- ACTION HANDLERS --------- # 
+    # repeat button handler
+    async def repeat_btn_handler(self, ctx, vid):
+        url = "youtu.be/" + vid
+        await self.search_compile_play(ctx, url)
+
+
     # handle all (command) error
-    # COMMENT TO ENABLE DETAILED ERROR MESSAGE ON CONSOLE (WHEN DEBUG)
     @commands.Cog.listener()
     async def on_command_error(self, ctx, e):
-        # print traceback on console
-        print(e)
         # send error message to text channel
         await self.notify(ctx, e.original, del_sec=None)
+        # print traceback on console
+        raise e.original
 
 
 
