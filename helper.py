@@ -39,3 +39,16 @@ def get_channel_to_join(ctx):
 
     return max_member_c if max_member_c else vcs[0]
     
+
+def yturl_to_vid(url):
+    if "watch?" in url:
+        GET_req = url.split("watch?")[-1].split("&")
+        for r in GET_req:
+            if r[0] == 'v': vid = r[2:]
+            break
+        if not vid: raise Exception("No video ID in URL")
+        return vid
+    elif "youtu.be" in url:
+        vid = url.split("/")[-1]
+        return vid
+    else: raise Exception("Not youtube link")

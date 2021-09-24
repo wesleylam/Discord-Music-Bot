@@ -1,7 +1,7 @@
 from SongInfo import SongInfo
 import discord
 from discord.ext import commands
-from discord_components import ComponentsBot
+from discord_components import ComponentsBot, component
 
 from VcControl import VcControl
 from ytAPIget import yt_search
@@ -20,6 +20,19 @@ class DJ(commands.Cog):
         self.vcControls = {} # guild.id: vcControl object
         self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
 
+
+    # ---------------------------- MESSAGING --------------------------- # 
+    async def notify(self, ctx, message, del_sec = 10):
+        m = await ctx.send(message)
+
+        # delete the message if needed
+        if del_sec: 
+            assert type(del_sec) == int
+            await m.delete(delay = del_sec)
+
+    # -------------------------------------------------------------------------------------------- # 
+    # ------------------------------------- VOICE CONTROL ---------------------------------------- # 
+    # -------------------------------------------------------------------------------------------- # 
     # -------------------- Join voice channel --------------------
     @commands.command()
     async def join(self, ctx):
@@ -27,10 +40,10 @@ class DJ(commands.Cog):
             vc = get_channel_to_join(ctx)
             await vc.connect()
             # create new playlist instance, send current channel for further messaging
-            self.vcControls[ctx.guild.id] = VcControl(ctx.channel)
+            self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self)
         else: 
             n = ctx.voice_client.channel.name
-            await ctx.send("I am in voice channel: " + n)
+            await self.notify(ctx, f"I am in voice channel: {n}", del_sec=60)
 
     # -------------------- Leave voice channel --------------------
     @commands.command()
@@ -41,6 +54,16 @@ class DJ(commands.Cog):
             await ctx.voice_client.disconnect()
             
     # -------------------- play from youtube url / default if no url -------------------- # 
+    # COMMAND: dj
+    @commands.command()
+    async def dj(self, ctx, type = None):
+        vc = ctx.voice_client
+        if vc is None:
+            await self.join(ctx)
+            vc = ctx.voice_client
+        self.vcControls[ctx.guild.id].dj = True
+        await self.vcControls[ctx.guild.id].next(vc)
+
     # COMMAND: p
     @commands.command()
     async def p(self, ctx, *kwords):
@@ -52,19 +75,23 @@ class DJ(commands.Cog):
 
     # compile YTDLSource (audio source object) from youtube url
     # return: source object
-    async def compile_yt_source(self, url, stream = True, baseBoosted = False):
+    async def compile_yt_source(self, vid, stream = True):
+        url = "https://youtube.com/watch?v=" + vid
+
         try:
             # search yt url
             data = await self.bot.loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
         except Exception as e:
-            raise Exception("URL not found")
+            self.djdb.remove_song(vid)
+            raise Exception(f"Removed: {url} (URL not found)")
 
         if 'entries' in data:
             # take first item from a playlist
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        if baseBoosted:
+        # options for baseboosted or normal
+        if need_baseboost(data.get('title')):
             ffmpeg_final_options = ffmpeg_options.copy()
             os = "options"
             ffmpeg_final_options[os] = ffmpeg_final_options[os] + " -af bass=g=50"
@@ -72,7 +99,14 @@ class DJ(commands.Cog):
             ffmpeg_final_options = ffmpeg_options.copy()
         source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data)
         source.url = url
-        return source
+        source.vid = vid
+
+        # check valid song
+        banned_reason = is_banned(source.title)
+        if banned_reason:
+            raise Exception(banned_reason)
+        else:
+            return source
 
     # search url, compile source and play audio
     async def search_compile_play(self, ctx, *kwords):
@@ -87,50 +121,33 @@ class DJ(commands.Cog):
             # get url
             if ("youtu.be" in s[0] or "youtube.com" in s[0]):
                 url = s[0]
-                vid = None 
                 # get vid from url
-                if "watch?" in url:
-                    GET_req = url.split("watch?")[-1].split("&")
-                    for r in GET_req:
-                        if r[0] == 'v': vid = r[2:]
-                        break
-                    if not vid: raise Exception("No video ID in URL")
-                else:
-                    vid = url.split("/")[-1]
+                vid = yturl_to_vid(url)
             else:
                 # search for url in youtube API
                 search_term = (" ".join(s)).lower()
-                await ctx.send("Searching: " + search_term)
+                await self.notify(ctx, f"Searching: {search_term}")
                 
                 # fetch vid from either db or youtube api search
                 match = self.djdb.find_query_match(search_term)
                 if match:
                     vid = match
+                    if not self.djdb.find_song_match(vid): # no entry in db
+                        info = yt_search(vid, use_vID=True)
+                        self.djdb.insert_song(info)
                 else:                    
                     info = yt_search(search_term)
                     if not info: raise Exception("Nothing found in video form")
                     vid = info.vID
                     # add query to db
                     self.djdb.add_query(search_term, info)
-                url = "https://youtube.com/watch?v=" + vid
 
             # DB: INC Qcount
 
             # compile
-            source = await self.compile_yt_source(url)
-            source.vid = vid
-
-            # baseboost song
-            if need_baseboost(source.title):
-                source = await self.compile_yt_source(url, baseBoosted = True)
-                source.vid = vid            
-
-            # check valid song
-            banned_reason = is_banned(source.title)
-            if banned_reason:
-                raise Exception(banned_reason)
-            else:
-                await self.play_in_vc(ctx, source)
+            source = await self.compile_yt_source(vid)
+            # play
+            await self.play_in_vc(ctx, source)
 
     # send source to playlist and play in vc
     async def play_in_vc(self, ctx, source):
@@ -143,7 +160,7 @@ class DJ(commands.Cog):
     # COMMAND: nowplaying
     @commands.command()
     async def nowplaying(self, ctx):
-        await self.vcControls[ctx.guild.id].nowplaying(ctx)
+        await self.vcControls[ctx.guild.id].display_nowplaying(ctx)
 
     # COMMAND: list
     @commands.command()
@@ -188,40 +205,51 @@ class DJ(commands.Cog):
 
         vc.source = discord.PCMVolumeTransformer(vc.source)
         vc.source.volume = float(volume)
-        await ctx.send("Volume multiply by " + str(ctx.voice_client.source.volume))
+        await self.notify(ctx, f"Volume multiply by {ctx.voice_client.source.volume}")
+
+
+
+    # -------------------------------------------------------------------------------------------- # 
+    # ------------------------------------- DB MODIFICATION --------------------------------------- # 
+    # -------------------------------------------------------------------------------------------- # 
+    # COMMAND: bind
+    @commands.command()
+    async def bind(self, ctx, *args):
+        try:
+            vid = yturl_to_vid(args[-1])
+            q = " ".join(args[:-1])
+        except: 
+            vid = None
+            q = " ".join(args)
+
+        if vid:
+            # actual binding when url provided
+            if not self.djdb.find_song_match(vid):
+                info = yt_search(vid, use_vID = True)
+            else: # song exist
+                info = vid
+
+            self.djdb.add_query(q, info)
+            await self.notify(ctx, f"Added binding \n{q} -> https://youtu.be/{vID}", del_sec=None)
+        else:
+            # query binding if url not provided
+            vID = self.djdb.find_query_match(q)
+            if vID:
+                await self.notify(ctx, f"{q} is bind to https://youtu.be/{vID}", del_sec=None)
+            else: 
+                await self.notify(ctx, f"{q} is not bind to anything", del_sec=None)
+
+    # COMMAND: tag
+    # tag "link" "tag"
+    @commands.command()
+    async def tag(self, ctx, *args):
+
+        pass
 
     # -------------------------------------------------------------------------------------------- # 
     # ------------------------------------- EVENT HANDLING --------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
-    @commands.Cog.listener()
-    async def on_button_click(self, interaction):
-        ctx = await self.bot.get_context(interaction.message)
-
-        # btnID - eg: remove_xxxxxx
-        id = interaction.component.id
-        
-        actions = {
-            'repeat': self.repeat_btn_handler, 
-            'remove': self.remove_btn_handler,
-        }
-        for action, handler in actions.items():
-            if action in id[:len(action)]:
-                await handler(ctx, id[len(action)+1:])
-                await interaction.respond()
-                return # maybe break
     
-    
-    # --------- ACTION HANDLERS --------- # 
-    # repeat button handler
-    async def repeat_btn_handler(self, ctx, vid):
-        url = "youtu.be/" + vid
-        await self.search_compile_play(ctx, url)
-    
-    # remove button handler
-    async def remove_btn_handler(self, ctx, vid):
-        await self.vcControls[ctx.guild.id].remove_track(ctx.voice_client, vid, vid=True) 
-
-
     # handle all (command) error
     # COMMENT TO ENABLE DETAILED ERROR MESSAGE ON CONSOLE (WHEN DEBUG)
     @commands.Cog.listener()
@@ -229,7 +257,7 @@ class DJ(commands.Cog):
         # print traceback on console
         print(e)
         # send error message to text channel
-        await ctx.send(e.original)
+        await self.notify(ctx, e.original, del_sec=None)
 
 
 
