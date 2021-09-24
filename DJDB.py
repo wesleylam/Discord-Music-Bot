@@ -5,11 +5,18 @@ import random
 
 class DJDB():
     def __init__(self, host, user, password, db_name) -> None:
+        self.host = host
+        self.user = user
+        self.password = password
+        self.db_name = db_name
+        self.connect()
+
+    def connect(self):
         self.db = mysql.connector.connect(
-            host = host,
-            user = user,
-            password = password,
-            database = db_name,
+            host = self.host,
+            user = self.user,
+            password = self.password,
+            database = self.db_name,
 
             # use unicode (eg: emoji)
             use_unicode = True,

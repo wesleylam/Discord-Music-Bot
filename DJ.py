@@ -38,6 +38,7 @@ class DJ(commands.Cog):
     async def join(self, ctx):
         if ctx.voice_client is None:
             vc = get_channel_to_join(ctx)
+            self.djdb.connect()
             await vc.connect()
             # create new playlist instance, send current channel for further messaging
             self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self)
@@ -123,6 +124,9 @@ class DJ(commands.Cog):
                 url = s[0]
                 # get vid from url
                 vid = yturl_to_vid(url)
+                if not self.djdb.find_song_match(vid):
+                    info = yt_search(vid, use_vID=True)
+                    self.djdb.insert_song(info)
             else:
                 # search for url in youtube API
                 search_term = (" ".join(s)).lower()
@@ -243,7 +247,6 @@ class DJ(commands.Cog):
     # tag "link" "tag"
     @commands.command()
     async def tag(self, ctx, *args):
-
         pass
 
     # -------------------------------------------------------------------------------------------- # 
