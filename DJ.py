@@ -18,7 +18,6 @@ class DJ(commands.Cog):
         self.bot = bot
         self.vcControls = {} # guild.id: vcControl object
         self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
-        self.bot_status(False)
 
 
     # ---------------------------- MESSAGING --------------------------- # 
@@ -257,6 +256,13 @@ class DJ(commands.Cog):
     # -------------------------------------------------------------------------------------------- # 
     # ------------------------------------- EVENT HANDLING --------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
+    @commands.Cog.listener()		
+    async def on_ready(self, ):
+        await self.bot_status(False)
+        print(f'Logged in as {client.user} (ID: {client.user.id})')
+        print('------')
+
+    
     async def bot_status(self, dj):
         if dj: 
             await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name="DJ"))
@@ -310,10 +316,8 @@ if __name__ == "__main__":
     client = ComponentsBot(command_prefix="=", case_insensitive=True, 
                     description='DJ', intents=intents)
 
-    @client.event
-    async def on_ready():
-        print(f'Logged in as {client.user} (ID: {client.user.id})')
-        print('------')
+    # @client.event
+    # async def on_ready():
 
     client.add_cog(DJ(client))
     client.run(TOKEN)

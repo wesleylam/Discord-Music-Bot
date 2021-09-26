@@ -18,6 +18,7 @@ class VcControl():
         self.listbox = None
 
     # ------------------------- SETTER / UPDATER ------------------------- # 
+    # (delete all updatable message when ending sessions)
     def set_dj(self, type):
         self.dj = type
         # update views
@@ -93,7 +94,8 @@ class VcControl():
             while vc.is_playing(): 
                 await asyncio.sleep(1)
 
-            # replace old playing message with ended 
+            # replace old playing message with ended message (allow encore)
+            # transforms into immutable PERMANANT message 
             head = f"Skipped by {self.skip_author}" if self.skip_author else "Ended"
             await m.edit(
                 f"{head}: {source.title}",
@@ -101,8 +103,7 @@ class VcControl():
             )
             self.skip_author = None
 
-        for m in self.queuing_message:
-            await m.delete()
+        # end of playlist
         return 
                 
 
