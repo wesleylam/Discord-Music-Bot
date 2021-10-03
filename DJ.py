@@ -32,7 +32,7 @@ class DJ(commands.Cog):
     # -------------------------------------------------------------------------------------------- # 
     # ------------------------------------- VOICE CONTROL ---------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
-    # -------------------- Join voice channel --------------------
+    # -------------------- Join voice channel -------------------- #
     @commands.command()
     async def join(self, ctx):
         if ctx.voice_client is None:
@@ -51,6 +51,7 @@ class DJ(commands.Cog):
         if ctx.voice_client is None:
             raise Exception("I am not in any voice channel, use join command instead")
         else: 
+            await self.stop(ctx)
             await ctx.voice_client.disconnect()
             
     # -------------------- play from youtube url / default if no url -------------------- # 
@@ -66,8 +67,12 @@ class DJ(commands.Cog):
         self.vcControls[ctx.guild.id].set_dj( type )
         await self.bot_status(dj = type)
 
-        # play next vc
-        await self.vcControls[ctx.guild.id].next(vc)
+        try:
+            # play next vc
+            await self.vcControls[ctx.guild.id].next(vc)
+        except:
+            # pass if player is playing
+            pass
 
     # COMMAND: p
     @commands.command()

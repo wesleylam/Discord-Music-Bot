@@ -63,6 +63,10 @@ class VcControl():
                 raise Exception(m)
             print("song ended w/o error")
 
+        # prevent replay
+        if vc.is_playing(): 
+            raise Exception("Already playing songs")
+
         # queue loop
         while len(self.playlist) > 0 or self.dj:
             # activate dj when no song in queue
@@ -212,9 +216,9 @@ class VcControl():
     def switch_dj_button(self, vc, vid, list = False):
         return self.djObj.bot.components_manager.add_callback(
             (   
-                Button(style=ButtonStyle.red, label="Turn off DJ") 
+                Button(style=ButtonStyle.green, label="DJ: On")
                 if self.dj else
-                Button(style=ButtonStyle.green, label="Turn on DJ")
+                Button(style=ButtonStyle.red, label="DJ: Off") 
             ),
             lambda i: self.switch_dj_callback(i, vc, vid, list = list)
         )
@@ -240,9 +244,9 @@ class VcControl():
 
     def switch_djable_button(self, vc, vid, queue = False):
         return self.djObj.bot.components_manager.add_callback(
-            (   Button(style=ButtonStyle.green, label="DJable")
+            (   Button(style=ButtonStyle.green, label="Now: DJable")
                 if self.djObj.djdb.find_djable(vid) else
-                Button(style=ButtonStyle.red, label="Not DJable") 
+                Button(style=ButtonStyle.red, label="Now: Not DJable") 
             ),
             lambda i: self.switch_djable_callback(i, vc, vid, queue = queue)
         )
