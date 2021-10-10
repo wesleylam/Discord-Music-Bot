@@ -5,7 +5,7 @@ def help(o):
     print("HELP")
     print("dir:", dir(o))
     print("type:", type(o))
-    print("str:", o)
+    print(f"str: '{o}'")
 
 # determine is the song banned using its title: return reason or None
 def is_banned(title: str):

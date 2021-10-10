@@ -1,36 +1,37 @@
-from asyncio.queues import Queue
 import discord
 import asyncio
 from discord_components import Button, ButtonStyle
 from helper import help
+from Views import Views, ViewUpdateType
 
 class VcControl():
-    def __init__(self, mChannel, djo) -> None:
+    def __init__(self, mChannel, djo, vc) -> None:
         self.mChannel = mChannel # message channel
         self.nowPlaying = None
         self.dj = None # dj type: string?
         self.djObj = djo
+        self.vc = vc # voice client
         self.skip_author = None
 
         # active display messages
         self.playlist = [] # [(source, m), (source, m) ....]
-        self.playbox = None
-        self.listbox = None
+        self.views = Views(mChannel, vc, self)
 
     # ------------------------- SETTER / UPDATER ------------------------- # 
     # (delete all updatable message when ending sessions)
-    def set_dj(self, type):
+    async def set_dj_type(self, type, update = ViewUpdateType.EDIT):
         self.dj = type
+        # set bot status
+        await self.djObj.bot_status(self.dj)
+
         # update views
+        if self.vc.is_playing():
+            await self.views.update_playing(update = update)
+        else:
+            await self.next()
+        # update other views (list)
+        await self.views.update_list()
 
-    def update_playbox():
-        pass
-    
-    def update_listbox():
-        pass
-
-    def update_queueboxes():
-        pass
 
     # ---------------------------- MESSAGING --------------------------- # 
     async def notify(self, message, del_sec = 10):
@@ -47,15 +48,17 @@ class VcControl():
         m = await self.mChannel.send(
             "Queued: " + source.title,
             components=[[
-                self.remove_button(vc, source.vid, label = "Remove"),
-                self.switch_djable_button(vc, source.vid)
+                self.views.remove_button(vc, source.vid, label = "Remove"),
+                self.views.switch_djable_button(vc, source.vid)
             ]]
         )
         self.playlist.append( (source, m) ) 
         if not vc.is_playing(): 
-            await self.next(vc)
+            await self.next()
 
-    async def next(self, vc: discord.VoiceClient):
+    ###  Main playing function  ###
+    async def next(self):
+        vc = self.vc
         def after_handler(e):
             if e: 
                 m = "Error occured in streaming"
@@ -88,23 +91,16 @@ class VcControl():
             # actual play
             vc.play(source, after = after_handler )
             
-            # send message on text channel with action buttons
-            dj_string = "DJ " if dj_source else ""
-            m = await self.mChannel.send(
-                f"{dj_string}Playing: {source.title} \n{source.url}",
-                components=[self.get_play_buttons(vc, vid)]
-            )
+            # show playing views for controls
+            await self.views.show_playing(dj_source, source)
+
             # wait until the current track ends
             while vc.is_playing(): 
                 await asyncio.sleep(1)
 
-            # replace old playing message with ended message (allow encore)
-            # transforms into immutable PERMANANT message 
-            head = f"Skipped by {self.skip_author}" if self.skip_author else "Ended"
-            await m.edit(
-                f"{head}: {source.title}",
-                components=[self.encore_button(vc, vid)]
-            )
+
+            # ending the playing view and reset skip author
+            await self.views.end_playing(source, self.skip_author)
             self.skip_author = None
 
         # end of playlist
@@ -148,155 +144,56 @@ class VcControl():
  
 
     # display nowplaying 
-    async def display_nowplaying(self, ctx = None, interaction = None, vc = None):
-        assert not (ctx is None and interaction is None), "Nowplaying cannot run without ctx or interaction"
-        message = f"Now playing: {self.nowPlaying.title} \n{self.nowPlaying.url}"
-        if ctx and vc is None: vc = ctx.voice_client 
-        vid = self.nowPlaying.vid
-        components = [
-            self.get_play_buttons(vc, vid),
-            [
-                self.switch_djable_button(vc, vid),
-                self.del_from_db_button(vc, vid),
-                # perm vol up
-            ]
-        ]
-        if interaction: 
-            # Song options from play
-            await interaction.edit_origin(message, components=components)
-        else:
-            await ctx.send(message, components=components)
+    async def display_nowplaying(self):
+        if not self.vc: raise Exception("I am not in any voice channel")
+        if not self.vc.is_playing(): raise Exception("No song playing")
+        # add play a random song?
+
+        await self.views.update_playing(ViewUpdateType.REPOST)
+
+        # assert not (ctx is None and interaction is None), "Nowplaying cannot run without ctx or interaction"
+        # message = f"Now playing: {self.nowPlaying.title} \n{self.nowPlaying.url}"
+        # if ctx and vc is None: vc = ctx.voice_client 
+        # vid = self.nowPlaying.vid
+        # components = [
+        #     self.get_play_buttons(vc, vid),
+        #     [
+        #         self.switch_djable_button(vc, vid),
+        #         self.del_from_db_button(vc, vid),
+        #         # perm vol up
+        #     ]
+        # ]
+        # if interaction: 
+        #     # Song options from play
+        #     await interaction.edit_origin(message, components=components)
+        # else:
+        #     await ctx.send(message, components=components)
+
+
 
     # list playlist
     async def list(self, ctx):
-        m = f"Up Next ({len(self.playlist)}): \n"
-
-        for i, (s, _) in enumerate(self.playlist):
-            m += f"{s.title} \n"
-
-        await ctx.send(m, components = [self.switch_dj_button(ctx.voice_client, None, list = True)])
-
+        await self.views.show_list()
+        
     # clear playlist
     async def clear(self, silent = False):
         self.playlist = []
         if not silent: await self.mChannel.send("Playlist cleared")
 
     # stop and clear playlist
-    async def stop(self, vc: discord.VoiceClient):
-        if not vc: raise Exception("I am not in any voice channel")
+    async def stop(self):
+        if not self.vc: raise Exception("I am not in any voice channel")
 
-        if vc.is_playing():
+        if self.vc.is_playing():
             self.dj = None
             await self.clear(silent = True)
-            vc.stop()
+            self.vc.stop()
            
     def insert(self, source):
         pass
 
 
-
-    # ------------------------------ BUTTONS ----------------------------- # 
-    def get_play_buttons(self, vc, vid):
-        btns = [
-            self.encore_button(vc, vid),
-            self.remove_button(vc, vid),
-            self.switch_dj_button(vc, vid), 
-            self.song_info_button(vc, vid),
-        ]
-        return btns
-
-    def get_ended_buttons(self, vc, vid):
-        btns = [
-            self.encore_button(vc, vid),
-            self.remove_button(vc, vid),
-            self.song_info_button(vc, vid),
-        ]
-        return btns
-
-    def switch_dj_button(self, vc, vid, list = False):
-        return self.djObj.bot.components_manager.add_callback(
-            (   
-                Button(style=ButtonStyle.green, label="DJ: On")
-                if self.dj else
-                Button(style=ButtonStyle.red, label="DJ: Off") 
-            ),
-            lambda i: self.switch_dj_callback(i, vc, vid, list = list)
-        )
-
-    def encore_button(self, vc, vid):
-        # return self.djObj.bot.components_manager.add_callback(
-        #     Button(style=ButtonStyle.blue, label="Encore", id=f"encore_{vid}"), 
-        #     lambda i: self.encore_callback(i, vc, vid)
-        # )
-        return Button(style=ButtonStyle.blue, label="Encore", id=f"encore_{vid}")
-
-    def remove_button(self, vc, vid, label = "Skip"):
-        return self.djObj.bot.components_manager.add_callback(
-            Button(style=ButtonStyle.red, label=label), 
-            lambda i: self.remove_callback(i, vc, vid)
-        )
-
-    def song_info_button(self, vc, vid):
-        return self.djObj.bot.components_manager.add_callback(
-            Button(style=ButtonStyle.gray, label="Song Settings"), 
-            lambda i: self.song_info_callback(i, vc, vid)
-        )
-
-    def switch_djable_button(self, vc, vid, queue = False):
-        return self.djObj.bot.components_manager.add_callback(
-            (   Button(style=ButtonStyle.green, label="Now: DJable")
-                if self.djObj.djdb.find_djable(vid) else
-                Button(style=ButtonStyle.red, label="Now: Not DJable") 
-            ),
-            lambda i: self.switch_djable_callback(i, vc, vid, queue = queue)
-        )
-
-    def del_from_db_button(self, vc, vid):
-        return self.djObj.bot.components_manager.add_callback(
-            Button(style=ButtonStyle.red, label="Del from DB"), 
-            lambda i: self.db_del_entry_callback(i, vid)
-        )
-
-    # --------------------- BUTTONS CALLBACK -------------------- # 
-    async def switch_dj_callback(self, interaction, vc, vid, list = False):
-        self.dj = None if self.dj else True
-        # set bot status
-        await self.djObj.bot_status(self.dj != None)
-        
-        await interaction.edit_origin(
-            components = (
-                [self.get_play_buttons(vc, vid)]
-                if not list else 
-                [self.switch_dj_button(vc, vid, list)]
-            )
-        )
-
-    async def encore_callback(self, interaction, vc, vid):
-        source = await self.djObj.compile_yt_source(vid)
-        await self.add(vc, source)
-
-    async def remove_callback(self, interaction, vc, vid):
-        await self.remove_track(vc, vid, interaction.author, vid=True)
-    
-    async def song_info_callback(self, interaction, vc, vid):
-        await self.display_nowplaying(interaction = interaction, vc = vc)
-
-    # --- MORE --- # 
-    async def switch_djable_callback(self, interaction, vc, vid, queue = False):
-        self.djObj.djdb.switch_djable(vid)
-        if not queue: 
-            # playbox
-            await self.display_nowplaying(interaction = interaction, vc = vc)
-        else: 
-            # queue message
-            await interaction.edit_origin(
-                components = [[
-                    self.remove_button(vc, vid),
-                    self.switch_djable_button(vc, vid, queue)
-                ]]
-            )
-
-
-    async def db_del_entry_callback(self, interaction, vid):
-        self.djObj.djdb.remove_song(vid)
-        await self.notify(f"Removed song from db ({vid})")
+    # -------------------- DISCONNECT ------------------- # 
+    async def disconnectVC(self):
+        # also manage all messages?
+        await self.vc.disconnect()

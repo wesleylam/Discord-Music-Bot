@@ -22,6 +22,8 @@ class DJ(commands.Cog):
 
     # ---------------------------- MESSAGING --------------------------- # 
     async def notify(self, ctx, message, del_sec = 10):
+        if str(message) == "": return # prevent err
+
         m = await ctx.send(message)
 
         # delete the message if needed
@@ -35,12 +37,13 @@ class DJ(commands.Cog):
     # -------------------- Join voice channel -------------------- #
     @commands.command()
     async def join(self, ctx):
+        print(ctx.guild.id)
         if ctx.voice_client is None:
             vc = get_channel_to_join(ctx)
             self.djdb.connect()
             await vc.connect()
             # create new playlist instance, send current channel for further messaging
-            self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self)
+            self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self, ctx.voice_client)
         else: 
             n = ctx.voice_client.channel.name
             await self.notify(ctx, f"I am in voice channel: {n}", del_sec=60)
@@ -53,6 +56,7 @@ class DJ(commands.Cog):
         else: 
             await self.stop(ctx)
             await ctx.voice_client.disconnect()
+            self.djdb.disconnect()
             
     # -------------------- play from youtube url / default if no url -------------------- # 
     # COMMAND: dj
@@ -64,15 +68,9 @@ class DJ(commands.Cog):
             vc = ctx.voice_client
 
         # set vccontrol and bot status
-        self.vcControls[ctx.guild.id].set_dj( type )
+        await self.vcControls[ctx.guild.id].set_dj_type( type )
         await self.bot_status(dj = type)
 
-        try:
-            # play next vc
-            await self.vcControls[ctx.guild.id].next(vc)
-        except:
-            # pass if player is playing
-            pass
 
     # COMMAND: p
     @commands.command()
@@ -173,7 +171,7 @@ class DJ(commands.Cog):
     # COMMAND: nowplaying
     @commands.command()
     async def nowplaying(self, ctx):
-        await self.vcControls[ctx.guild.id].display_nowplaying(ctx)
+        await self.vcControls[ctx.guild.id].display_nowplaying()
 
     # COMMAND: list
     @commands.command()
@@ -199,7 +197,7 @@ class DJ(commands.Cog):
     # COMMAND: stop
     @commands.command()
     async def stop(self, ctx):
-        await self.vcControls[ctx.guild.id].stop(ctx.voice_client)
+        await self.vcControls[ctx.guild.id].stop()
 
     # COMMAND: vup (doubled)
     @commands.command()
@@ -276,7 +274,7 @@ class DJ(commands.Cog):
 
 
 
-    # for other section: 1. encore
+    # for other section: 1. encore 2. reDJ 
     @commands.Cog.listener()
     async def on_button_click(self, interaction):
         ctx = await self.bot.get_context(interaction.message)
@@ -284,12 +282,13 @@ class DJ(commands.Cog):
         id = interaction.component.id
 
         actions = {
-            'encore': self.repeat_btn_handler, 
+            'encore': self.repeat_btn_handler,
+            'reDJ': self.reDJ_btn_handler
         }
         for action, handler in actions.items():
             if action in id[:len(action)]:
                 await handler(ctx, id[len(action)+1:])
-                await interaction.respond()
+                await interaction.send("encored", delete_after = 1)
                 return # maybe break
 
     # --------- ACTION HANDLERS --------- # 
@@ -297,6 +296,9 @@ class DJ(commands.Cog):
     async def repeat_btn_handler(self, ctx, vid):
         url = "youtu.be/" + vid
         await self.search_compile_play(ctx, url)
+    # reDJ button handler
+    async def reDJ_btn_handler(self, ctx, _):
+        await self.dj(ctx)
 
 
     # handle all (command) error

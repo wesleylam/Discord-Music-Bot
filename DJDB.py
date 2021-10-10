@@ -23,16 +23,21 @@ class DJDB():
             charset = 'utf8mb4',
             collation = 'utf8mb4_unicode_520_ci',
         )
-        self.cursor = self.db.cursor()
+    def disconnect(self):
+        self.db.close()
 
     # ------------------------ PRIVATE: DB direct actions --------------------------- # 
     def db_query(self, q):
-        self.cursor.execute(q)
-        result = self.cursor.fetchall()
+        cursor = self.db.cursor()
+        cursor.execute(q)
+        result = cursor.fetchall()
+        cursor.close()
         return result
     def db_update(self, sql):
-        self.cursor.execute(sql)
+        cursor = self.db.cursor()
+        cursor.execute(sql)
         self.db.commit()
+        cursor.close()
 
 
     # insert / update query
