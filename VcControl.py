@@ -62,9 +62,8 @@ class VcControl():
         vc = self.vc
         def after_handler(e):
             if e: 
-                m = "Error occured in streaming"
-                print(m + "\n" + e.message)
-                raise Exception(m)
+                print("Error occured in streaming")
+                raise e
             print("song ended w/o error")
 
         # prevent replay
