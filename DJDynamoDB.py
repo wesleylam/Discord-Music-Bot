@@ -89,7 +89,7 @@ class DJDB():
                 # skip: duplicate
                 return 
 
-        # update
+        # append query
         self.table.update_item(
             Key={ 'vID': vID },
             UpdateExpression=f'SET {DJDB.Attr.Queries} = list_append({DJDB.Attr.Queries}, :val)',
@@ -97,8 +97,6 @@ class DJDB():
                 ':val': query_words
             }
         )
-
-
 
 
     # insert one song
@@ -132,9 +130,11 @@ class DJDB():
         # update
         self.db_update(vID, DJDB.Attr.DJable, new_djable)
 
-    # used when duration is 0
-    def add_duration(self, vID, duration):
-        self.db_update(vID, DJDB.Attr.Duration, duration)
+    # update duration info
+    def update_duration(self, vID, duration):
+        old_duration = self.db_get(vID, [DJDB.Attr.Duration])[DJDB.Attr.Duration]
+        if old_duration == 0 or old_duration != duration:
+            self.db_update(vID, DJDB.Attr.Duration, duration)
 
 
     def increment_qcount(self, vID):

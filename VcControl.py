@@ -3,6 +3,7 @@ import asyncio
 from discord_components import Button, ButtonStyle
 from helper import help
 from Views import Views, ViewUpdateType
+import time
 
 class VcControl():
     def __init__(self, mChannel, djo, vc) -> None:
@@ -89,6 +90,7 @@ class VcControl():
             vid = source.vid
             self.nowPlaying = source
             # actual play
+            start = time.time() # start timer for duration
             vc.play(source, after = after_handler )
             
             # show playing views for controls
@@ -98,6 +100,9 @@ class VcControl():
             while vc.is_playing(): 
                 await asyncio.sleep(1)
 
+            # end timer and add/update duration
+            end = time.time()
+            self.djObj.djdb.update_duration(vid, end - start)
 
             # ending the playing view and reset skip author
             await self.views.end_playing(source, self.skip_author)

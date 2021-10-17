@@ -94,6 +94,9 @@ class DJDB():
         sql = f"UPDATE YtVideo SET DJable = '{new_djable}' WHERE vID = '{vid}'"
         self.db_update(sql)
 
+    def update_duration(self, vID, duration):
+        pass
+
     def update_qcount(self, vID):
         pass
 
