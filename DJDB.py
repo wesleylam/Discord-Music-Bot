@@ -142,6 +142,32 @@ class DJDB():
             return vID
 
 
+    def list_all_songs(self, dj=None, top = 10):
+        get = "Title"
+        if dj is None:
+            result = self.db_query(f"SELECT {get} FROM YtVideo")
+        elif dj is True:
+            result = self.db_query(f"SELECT {get} FROM YtVideo WHERE DJable = '{1}'")
+        elif dj is False:
+            result = self.db_query(f"SELECT {get} FROM YtVideo WHERE DJable = '{0}'")
+        else: raise Exception(f"Unknown arg (dj): {dj}")
+            
+        if len(result) <= 0: # no result
+            return None
+        else: 
+            return result[:10]
+
+    def search(self, search_term, dj = None):
+        get = "vID, Title"
+        q = f"SELECT {get} FROM YtVideo WHERE Title LIKE '%{search_term}%'"
+        if dj: q += f" AND DJable = '{0}'"
+        
+        result = self.db_query(q)
+
+        if len(result) <= 0: # no result
+            return None
+        else: 
+            return result[:10]
 
 if __name__ == "__main__":
     pass

@@ -137,7 +137,7 @@ class Views():
     def song_info_button(self, vc, vid):
         return self.djbot_component_manager.add_callback(
             Button(style=ButtonStyle.gray, label="Song Settings"), 
-            lambda i: self.song_info_callback(i, vc, vid)
+            self.song_info_callback
         )
 
     def switch_djable_button(self, vc, vid, queue = False):
@@ -169,7 +169,7 @@ class Views():
     async def remove_callback(self, interaction, vc, vid):
         await self.vcControl.remove_track(vc, vid, interaction.author, vid=True)
     
-    async def song_info_callback(self, interaction, vc, vid):
+    async def song_info_callback(self, interaction):
         await interaction.edit_origin(
             components = self.playbox_components(extended = True)
         )
@@ -198,8 +198,7 @@ class Views():
                 ]]
             )
 
-
     async def db_del_entry_callback(self, interaction, vid):
-        self.djObj.djdb.remove_song(vid)
+        self.vcControl.djObj.djdb.remove_song(vid)
         await self.notify(f"Removed song from db ({vid})")
 

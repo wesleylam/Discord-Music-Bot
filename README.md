@@ -4,6 +4,7 @@ Built using Python 3.7.7
 ## Required modules
 - discord.py
 - discord_components
+- discord.py[voice] (pycparser, cffi, six, PyNaCl)
 - youtube-dl
 - ffmpeg
 - opus

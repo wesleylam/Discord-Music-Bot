@@ -57,6 +57,7 @@ class DJ(commands.Cog):
             await self.stop(ctx)
             await ctx.voice_client.disconnect()
             self.djdb.disconnect()
+            await self.bot_status(dj = None)
             
     # -------------------- play from youtube url / default if no url -------------------- # 
     # COMMAND: dj
@@ -221,7 +222,7 @@ class DJ(commands.Cog):
 
 
     # -------------------------------------------------------------------------------------------- # 
-    # ------------------------------------- DB MODIFICATION --------------------------------------- # 
+    # --------------------------------------- DB RELATED ----------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
     # COMMAND: bind
     @commands.command()
@@ -250,11 +251,51 @@ class DJ(commands.Cog):
             else: 
                 await self.notify(ctx, f"{q} is not bind to anything", del_sec=None)
 
+    # COMMAND: listdj
+    # list all djable songs
+    @commands.command()
+    async def listdj(self, ctx, *args):
+        songs = self.djdb.list_all_songs(dj = True)
+        await self.list(ctx, display_list = songs, title = "List 10 djable songs", none_message = "No song found")
+
+
+    # COMMAND: listnotdj
+    # list all not djable songs
+    @commands.command()
+    async def listnotdj(self, ctx, *args):
+        songs = self.djdb.list_all_songs(dj = False)
+        await self.list(ctx, display_list = songs, title = "List 10 not djable songs", none_message = "No song found")
+
+    # COMMAND: searchdj
+    # list all djable songs
+    @commands.command()
+    async def search(self, ctx, *args):
+        q = " ".join(args)
+        songs = self.djdb.search(search_term = q)
+        await self.list(ctx, display_list = songs, title = f"Searching: {q}", none_message = "No song found")
+
+
+    # list: for listing in discord channel (eg: list songs)
+    async def list(self, ctx, display_list, title = "", none_message = "Nothing found"):
+        if display_list:
+            str = title 
+            if title != "": str += "\n"
+            for i, s in enumerate(display_list):
+                str += f"{i+1}: "
+                for detail in s:
+                    str += f"{detail}\t"
+                str += "\n"
+            await self.notify(ctx, str, del_sec=None)
+        else: 
+            await self.notify(ctx, none_message)
+
+
     # COMMAND: tag
     # tag "link" "tag"
     @commands.command()
     async def tag(self, ctx, *args):
         pass
+
 
     # -------------------------------------------------------------------------------------------- # 
     # ------------------------------------- EVENT HANDLING --------------------------------------- # 
@@ -288,7 +329,6 @@ class DJ(commands.Cog):
         for action, handler in actions.items():
             if action in id[:len(action)]:
                 await handler(ctx, id[len(action)+1:])
-                await interaction.send("encored", delete_after = 1)
                 return # maybe break
 
     # --------- ACTION HANDLERS --------- # 
