@@ -2,13 +2,10 @@ from DJDBException import DJDBException
 from options import default_init_vol
 from SongInfo import SongInfo
 import random
-from enum import Enum
-import functools
 from helper import error_log
 
 # aws
 import boto3
-import pickle
 from boto3.dynamodb.conditions import Attr
 
 
