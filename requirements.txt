@@ -1,0 +1,5 @@
+requests==2.26.0
+discord==1.7.3
+discord_components==2.1.1
+mysql_connector_repackaged==0.3.1
+youtube_dl==2021.6.6
