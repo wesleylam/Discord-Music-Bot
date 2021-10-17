@@ -5,6 +5,8 @@ import os
 from config import yt_API_key
 
 def yt_search(q, use_vID = False):
+    print(f"Using Youtube API: {q}")
+
     max_results = 5
     if use_vID:
         url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id={q}&key={yt_API_key}"

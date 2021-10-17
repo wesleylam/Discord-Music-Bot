@@ -102,7 +102,8 @@ class VcControl():
 
             # end timer and add/update duration
             end = time.time()
-            self.djObj.djdb.update_duration(vid, end - start)
+            if self.skip_author is None: 
+                self.djObj.djdb.update_duration(vid, end - start)
 
             # ending the playing view and reset skip author
             await self.views.end_playing(source, self.skip_author)
@@ -156,25 +157,6 @@ class VcControl():
 
         await self.views.update_playing(ViewUpdateType.REPOST)
 
-        # assert not (ctx is None and interaction is None), "Nowplaying cannot run without ctx or interaction"
-        # message = f"Now playing: {self.nowPlaying.title} \n{self.nowPlaying.url}"
-        # if ctx and vc is None: vc = ctx.voice_client 
-        # vid = self.nowPlaying.vid
-        # components = [
-        #     self.get_play_buttons(vc, vid),
-        #     [
-        #         self.switch_djable_button(vc, vid),
-        #         self.del_from_db_button(vc, vid),
-        #         # perm vol up
-        #     ]
-        # ]
-        # if interaction: 
-        #     # Song options from play
-        #     await interaction.edit_origin(message, components=components)
-        # else:
-        #     await ctx.send(message, components=components)
-
-
 
     # list playlist
     async def list(self, ctx):
@@ -192,6 +174,7 @@ class VcControl():
         if self.vc.is_playing():
             self.dj = None
             await self.clear(silent = True)
+            self.skip_author = "Leaving"
             self.vc.stop()
            
     def insert(self, source):

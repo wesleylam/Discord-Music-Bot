@@ -1,4 +1,6 @@
 from options import banned_list, banned_reason, baseboost_list
+import datetime
+
 
 # debug printing function 
 def help(o):
@@ -52,3 +54,10 @@ def yturl_to_vid(url):
         vid = url.split("/")[-1]
         return vid
     else: raise Exception("Not youtube link")
+
+
+def error_log(message):
+    now = datetime.datetime.now()
+    with open(f"./error_log.log", "a") as f:
+        pmessage = f"{now}: {message}"
+        f.write(pmessage + "\n")

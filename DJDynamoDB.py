@@ -4,6 +4,7 @@ from SongInfo import SongInfo
 import random
 from enum import Enum
 import functools
+from helper import error_log
 
 # aws
 import boto3
@@ -12,7 +13,7 @@ from boto3.dynamodb.conditions import Attr
 
 
 class DJDB():
-    class Attr(Enum):
+    class Attr():
         vID = "vID"
         Title = "Title"
         ChannelID = "ChannelID"
@@ -30,7 +31,7 @@ class DJDB():
 
     def disconnect(self):
         # no need disconnect?
-        self.table = None
+        pass
 
     # ------------------------ PRIVATE: DB direct actions --------------------------- # 
     def db_get(self, vID, get_attrs = None):
@@ -57,10 +58,9 @@ class DJDB():
         # update
         self.table.update_item(
             Key={ 'vID': vID },
-            UpdateExpression=f'SET {attr} = :val',
-            ExpressionAttributeValues={
-                ':val': val
-            }
+            UpdateExpression='SET #a = :val',
+            ExpressionAttributeNames={ '#a': attr },
+            ExpressionAttributeValues={ ':val': val }
         )
 
     def chop_query(self, query):
@@ -73,7 +73,7 @@ class DJDB():
     # insert / update search
     def add_query(self, query, songInfo, song_exist = False):
         # use vID to create new songinfo
-        # MUST have existing entry in ytvideo
+        # MUST have existing entry in db
         if type(songInfo) != SongInfo:
             songInfo = SongInfo(songInfo, "", "")
             song_exist = True 
@@ -82,38 +82,45 @@ class DJDB():
         if not song_exist: self.insert_song(songInfo)
         vID = songInfo.vID
 
-        song = self.db_get(vID)
+        # get song query (must find song, cannot cause error, song added above)
+        song = self.db_get(vID, [DJDB.Attr.Queries])
+
+        # transform query into tokens
         query_words = self.chop_query(query)
+
+        # check for duplicate
         for q in song[DJDB.Attr.Queries]:
             if q == query_words:
                 # skip: duplicate
                 return 
 
-        # append query
+        # append the query if it is not duplicate
         self.table.update_item(
             Key={ 'vID': vID },
             UpdateExpression=f'SET {DJDB.Attr.Queries} = list_append({DJDB.Attr.Queries}, :val)',
             ExpressionAttributeValues={
-                ':val': query_words
+                ':val': [query_words]
             }
         )
 
 
     # insert one song
     def insert_song(self, songInfo, qcount = 1, songVol = default_init_vol):
-        if self.find_song_match(songInfo.vID):
+        song = self.find_song_match(songInfo.vID)
+        if song:
             # skip if song exist
-            return
+            return  
+        print(f"Song not found {songInfo.vID}, inserting to db")
 
-        songVol = songVol * 100 # as percentage (need int)
-
+        # get all info and default parameters
         item = songInfo.dictify_info()    
         item[DJDB.Attr.Queries] = []
         item[DJDB.Attr.DJable] = True
-        item[DJDB.Attr.SongVol] = songVol
+        item[DJDB.Attr.SongVol] = int(songVol * 100) # as percentage (need int)
         item[DJDB.Attr.Duration] = 0
         item[DJDB.Attr.Qcount] = qcount
 
+        # add to db
         self.table.put_item(Item = item)
 
     # remove song and all its queries
@@ -132,9 +139,16 @@ class DJDB():
 
     # update duration info
     def update_duration(self, vID, duration):
-        old_duration = self.db_get(vID, [DJDB.Attr.Duration])[DJDB.Attr.Duration]
+        try:
+            old_duration = self.db_get(vID, [DJDB.Attr.Duration])[DJDB.Attr.Duration]
+        except DJDBException as e:
+            # possible cause: delete from db and try to update
+            error_log("Cannot update duration: " + e.message)
+            return 
+
+        print(f"Updating duration for {vID}: {duration}")
         if old_duration == 0 or old_duration != duration:
-            self.db_update(vID, DJDB.Attr.Duration, duration)
+            self.db_update(vID, DJDB.Attr.Duration, int(duration))
 
 
     def increment_qcount(self, vID):
@@ -155,8 +169,12 @@ class DJDB():
         pass
 
     # ------------------------------- Queries ------------------------------- # 
-    def find_djable(self, vID):
-        return self.db_get(vID, [DJDB.Attr.DJable])[DJDB.Attr.DJable]
+    def find_djable(self, vID) -> bool:
+        try: 
+            return self.db_get(vID, [DJDB.Attr.DJable])[DJDB.Attr.DJable]
+        except DJDBException as e:
+            error_log("cannot find djable: " + e.message)
+            return False
 
     # query random song
     def find_rand_song(self, dj = True):
@@ -165,13 +183,13 @@ class DJDB():
             response = self.table.scan(
                 # FilterExpression=Attr('Title').contains('back')
                 FilterExpression = Attr(DJDB.Attr.DJable).eq(True),
-                ProjectionExpression = [DJDB.Attr.vID]
+                ProjectionExpression = DJDB.Attr.vID
             )
         else:
             response = self.table.scan(
                 ProjectionExpression = [DJDB.Attr.vID]
             )
-        items = response['Item'] # items: list of dict
+        items = response['Items'] # items: list of dict
         return random.choice(items)[DJDB.Attr.vID]
 
 
@@ -179,7 +197,8 @@ class DJDB():
     def find_song_match(self, vID):
         try: 
             return self.db_get(vID)
-        except: 
+        except DJDBException as e:
+            # vID not in db
             return False
 
     # try to match query from db
@@ -188,7 +207,7 @@ class DJDB():
         response = self.table.scan(
             ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}'
         )
-        items = response['Item'] # items: list of dict
+        items = response['Items'] # items: list of dict
 
         if len(items) <= 0:
             # no songs at all
@@ -217,7 +236,7 @@ class DJDB():
 
     def list_all_songs(self, dj=None, top = 10):
         needed_attr = [ DJDB.Attr.Title ]
-        needed_attr_str = ", ".join(needed_attr)
+        needed_attr_str = ", ".join( needed_attr )
         if dj is None:
             response = self.table.scan(
                 ProjectionExpression = needed_attr_str
@@ -227,7 +246,7 @@ class DJDB():
                 FilterExpression = Attr(DJDB.Attr.DJable).eq(dj),
                 ProjectionExpression = needed_attr_str
             )
-        items = response['Item'] # items: list of dict
+        items = response['Items'] # items: list of dict
 
         if len(items) <= 0:
             # no songs at all
@@ -246,13 +265,13 @@ class DJDB():
             FilterExpression = Attr(DJDB.Attr.Title).contains(search_term),
             ProjectionExpression = needed_attr_str
         )
-        items = response['Item'] # items: list of dict
+        items = response['Items'] # items: list of dict
 
         if len(items) <= 0:
             # no songs at all
             return None
         else:
-            return [ [ item[a] for a in needed_attr ] for item in items[:top] ]
+            return [ [ item[DJDB.Attr.Title], "https://youtu.be/" + item[DJDB.Attr.vID] ] for item in items[:top] ]
             
 
 if __name__ == "__main__":

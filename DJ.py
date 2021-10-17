@@ -11,13 +11,19 @@ from YTDLSource import YTDLSource, StaticSource
 from helper import *
 from config import *
 from options import ytdl_format_options, ffmpeg_options
-from DJDB import DJDB
+from DJDynamoDB import DJDB
 
 class DJ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.vcControls = {} # guild.id: vcControl object
-        self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
+
+        # mysql
+        # self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
+        # dynamodb
+        self.djdb = DJDB()
+
+        self.djdb.connect()
 
 
     # ---------------------------- MESSAGING --------------------------- # 
@@ -144,10 +150,10 @@ class DJ(commands.Cog):
                 match = self.djdb.find_query_match(search_term)
                 if match:
                     vid = match
-                    if not self.djdb.find_song_match(vid): # no entry in db
+                    if not self.djdb.find_song_match(vid): # query in db but no song entry in db
                         info = yt_search(vid, use_vID=True)
                         self.djdb.insert_song(info)
-                else:                    
+                else:
                     info = yt_search(search_term)
                     if not info: raise Exception("Nothing found in video form")
                     vid = info.vID
@@ -346,6 +352,8 @@ class DJ(commands.Cog):
     async def on_command_error(self, ctx, e):
         # send error message to text channel
         await self.notify(ctx, e.original, del_sec=None)
+        # log to files
+        error_log(e.message)
         # print traceback on console
         raise e.original
 
