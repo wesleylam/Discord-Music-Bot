@@ -20,6 +20,8 @@ Built using Python 3.7.7 with AWS DynamoDB
 - boto3 (jmespath, botocore, s3transfer, boto3)
 
 ## Configurations
+- Configure AWS connection `aws configure`
+    - Require key pair (ID, secret key)
 - `config.py`: access keys and file directories
     - `TOKEN`: Your Discord bot access token. Create through [Discord Developer Portal] (https://discord.com/developers/applications)
     - `yt_API_key`: Your Youtube API key, for video/song search
