@@ -1,4 +1,5 @@
 from SongInfo import SongInfo
+import os
 import discord
 from discord.ext import commands
 from discord_components import ComponentsBot, component
@@ -10,7 +11,7 @@ from YTDLSource import YTDLSource, StaticSource
 
 from helper import *
 from config import *
-from options import ytdl_format_options, ffmpeg_options
+from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log
 from DJDynamoDB import DJDB
 
 class DJ(commands.Cog):
@@ -360,6 +361,8 @@ class DJ(commands.Cog):
 
 
 if __name__ == "__main__":
+    os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
+
     # for voice client to work: you need opus and ffmpeg
     discord.opus.load_opus(opus_dir)
 
@@ -370,9 +373,6 @@ if __name__ == "__main__":
     intents.members = True
     client = ComponentsBot(command_prefix="=", case_insensitive=True, 
                     description='DJ', intents=intents)
-
-    # @client.event
-    # async def on_ready():
 
     client.add_cog(DJ(client))
     client.run(TOKEN)

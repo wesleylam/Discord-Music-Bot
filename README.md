@@ -2,12 +2,26 @@
 Built using Python 3.7.7
 
 ## Required modules
+- boto3
 - discord.py
 - discord_components
 - discord.py[voice] (pycparser, cffi, six, PyNaCl)
 - youtube-dl
 - ffmpeg
 - opus
+
+## Packages install
+# discord
+async-timeout, chardet, typing-extensions, multidict, attrs, idna, yarl, aiohttp, discord.py, discord
+# discord.py[voice]
+six, pycparser, cffi, PyNaCl
+# discord_components
+# youtube-dl
+# ffmpeg
+# requests
+charset-normalizer, urllib3, certifi, requests
+# boto3
+jmespath, botocore, s3transfer, boto3
 
 ## Configurations
 - `config.py`: access keys and file directories

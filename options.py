@@ -1,4 +1,3 @@
-# youtube-dl --cookies /Users/joshualam/Desktop/projs/disbot/mixed_cookie.txt https://www.youtube.com/watch?v=WyJ8OtFBXr0
 # for ytdl settings
 ytdl_format_options = {
     'format': 'bestaudio/best',
@@ -16,10 +15,11 @@ ytdl_format_options = {
     # 'cookiefile': '', 
 }
 ffmpeg_options = {
-    "options": "-vn",
+    "options": "-vn -report",
     # allow reconnect when streaming drops
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 }
+ffmpeg_error_log = "."
 
 # default volume
 default_init_vol = 0.1
