@@ -4,21 +4,18 @@ Built using Python 3.7.7
 ## Required modules
 - discord.py
 - discord_components
-- discord.py[voice] (pycparser, cffi, six, PyNaCl)
+- discord.py[voice] 
 - youtube-dl
 - ffmpeg
 - opus
 
-## Packages install
-# discord
-async-timeout, chardet, typing-extensions, multidict, attrs, idna, yarl, aiohttp, discord.py, discord
-# discord.py[voice]
-six, pycparser, cffi, PyNaCl
-# discord_components
-# youtube-dl
-# ffmpeg
-# requests
-charset-normalizer, urllib3, certifi, requests
+## Packages (pip3 install)
+- discord (async-timeout, chardet, typing-extensions, multidict, attrs, idna, yarl, aiohttp, discord.py, discord)
+- discord.py[voice] (six, pycparser, cffi, PyNaCl)
+- discord_components
+- youtube-dl
+- ffmpeg
+- requests (charset-normalizer, urllib3, certifi, requests)
 
 ## Configurations
 - `config.py`: access keys and file directories
