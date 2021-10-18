@@ -19,7 +19,7 @@ ffmpeg_options = {
     # allow reconnect when streaming drops
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 }
-ffmpeg_error_log = "."
+ffmpeg_error_log = "./ffreport.log"
 
 # default volume
 default_init_vol = 0.1
