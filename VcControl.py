@@ -1,7 +1,6 @@
 import discord
 import asyncio
-from discord_components import Button, ButtonStyle
-from helper import help, ffmpeg_error_log
+from options import ffmpeg_error_log
 from Views import Views, ViewUpdateType
 import time
 
