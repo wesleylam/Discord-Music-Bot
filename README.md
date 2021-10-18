@@ -2,7 +2,6 @@
 Built using Python 3.7.7
 
 ## Required modules
-- boto3
 - discord.py
 - discord_components
 - discord.py[voice] (pycparser, cffi, six, PyNaCl)
@@ -20,8 +19,6 @@ six, pycparser, cffi, PyNaCl
 # ffmpeg
 # requests
 charset-normalizer, urllib3, certifi, requests
-# boto3
-jmespath, botocore, s3transfer, boto3
 
 ## Configurations
 - `config.py`: access keys and file directories

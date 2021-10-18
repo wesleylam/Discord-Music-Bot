@@ -20,9 +20,9 @@ class DJ(commands.Cog):
         self.vcControls = {} # guild.id: vcControl object
 
         # mysql
-        # self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
+        self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
         # dynamodb
-        self.djdb = DJDB()
+        # self.djdb = DJDB()
 
         self.djdb.connect()
 
