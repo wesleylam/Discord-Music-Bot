@@ -1,7 +1,7 @@
 import discord
 import asyncio
 from discord_components import Button, ButtonStyle
-from helper import help
+from helper import help, ffmpeg_error_log
 from Views import Views, ViewUpdateType
 import time
 
@@ -60,9 +60,27 @@ class VcControl():
     ###  Main playing function  ###
     async def next(self):
         vc = self.vc
-        def after_handler(e):
+        def after_handler(e, notify):
+            # read ffmpeg error
+            ffmpeg_err_m = None
+            with open(ffmpeg_error_log, "r") as f:
+                # get to last line
+                for line in f.readlines():
+                    pass
+            
+                # check for possible error
+                if "403 Forbidden" in line[-50:]:
+                    ffmpeg_err_m = "Access denied"
+                elif "Broken pipe" in line[-50:]:
+                    ffmpeg_err_m = "Disrupted"
+
+            if ffmpeg_err_m:
+                print(f"ffmpeg error: {line}")
+                notify(f"Error in streaming ({ffmpeg_err_m})")
+            
+            # read standard playing error
             if e: 
-                print("Error occured in streaming")
+                print("Error occured in playing")
                 raise e
             print("song ended w/o error")
 
@@ -90,7 +108,7 @@ class VcControl():
             self.nowPlaying = source
             # actual play
             start = time.time() # start timer for duration
-            vc.play(source, after = after_handler )
+            vc.play(source, after = lambda e: after_handler(e, self.notify) )
             
             # show playing views for controls
             await self.views.show_playing(dj_source, source)
