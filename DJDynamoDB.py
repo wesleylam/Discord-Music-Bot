@@ -1,4 +1,5 @@
 from DJDBException import DJDBException
+from config import dynamodb_table
 from options import default_init_vol
 from SongInfo import SongInfo
 import random
@@ -24,7 +25,7 @@ class DJDB():
         self.dynamodb = boto3.resource('dynamodb')
 
     def connect(self):
-        self.table = self.dynamodb.Table('DJsongs')
+        self.table = self.dynamodb.Table(dynamodb_table)
 
     def disconnect(self):
         # no need disconnect?
