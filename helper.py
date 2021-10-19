@@ -1,6 +1,6 @@
-from options import banned_list, banned_reason, baseboost_list
+from options import banned_list, banned_reason, baseboost_list, default_error_log
 import datetime
-
+import traceback
 
 # debug printing function 
 def help(o):
@@ -56,8 +56,12 @@ def yturl_to_vid(url):
     else: raise Exception("Not youtube link")
 
 
-def error_log(message):
+def error_log(e):
     now = datetime.datetime.now()
-    with open(f"./error_log.log", "a") as f:
-        pmessage = f"{now}: {message}"
-        f.write(pmessage + "\n")
+    with open(default_error_log, "a") as f:
+        m = f"{now}:"
+        f.write(m)
+        try:
+            raise e
+        except:
+            traceback.print_exc(file=f)

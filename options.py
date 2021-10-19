@@ -21,6 +21,8 @@ ffmpeg_options = {
 }
 ffmpeg_error_log = "./ffreport.log"
 
+default_error_log = "./error_log.log"
+
 # default volume
 default_init_vol = 0.1
 
