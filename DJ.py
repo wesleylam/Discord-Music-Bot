@@ -8,11 +8,13 @@ from VcControl import VcControl
 from ytAPIget import yt_search
 import youtube_dl
 from YTDLSource import YTDLSource, StaticSource
+from youtube_dl.utils import DownloadError
 
 from helper import *
 from config import *
 from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log
 from DJDynamoDB import DJDB
+from DJBannedException import DJBannedException
 
 class DJ(commands.Cog):
     def __init__(self, bot):
@@ -97,9 +99,9 @@ class DJ(commands.Cog):
         try:
             # search yt url
             data = await self.bot.loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        except Exception as e:
+        except DownloadError as e: # youtube dl download error
             self.djdb.remove_song(vid)
-            raise Exception(f"Removed: {url} (URL not found)")
+            raise DownloadError(f"Unable to download {url}, removed ({e.message})")
 
         if 'entries' in data:
             # take first item from a playlist
@@ -120,7 +122,7 @@ class DJ(commands.Cog):
         # check valid song
         banned_reason = is_banned(source.title)
         if banned_reason:
-            raise Exception(banned_reason)
+            raise DJBannedException(banned_reason)
         else:
             return source
 
@@ -354,7 +356,7 @@ class DJ(commands.Cog):
         # send error message to text channel
         await self.notify(ctx, e.original, del_sec=None)
         # log to files
-        error_log(e.original)
+        error_log(e.message)
         # print traceback on console
         raise e.original
 

@@ -2,6 +2,8 @@ import discord
 import asyncio
 from options import ffmpeg_error_log
 from Views import Views, ViewUpdateType
+from youtube_dl.utils import DownloadError
+from DJBannedException import DJBannedException
 import time
 
 class VcControl():
@@ -93,8 +95,11 @@ class VcControl():
             if self.dj and len(self.playlist) <= 0: 
                 # query a random vid and compile source
                 vid = self.djObj.djdb.find_rand_song()
+                
+                # must catch exception here, otherwise the play loop will end when yt error occur
                 try: source = await self.djObj.compile_yt_source(vid)
-                except Exception as e: self.mChannel.send(e.message)
+                # youtube download/extract error and banned song exception
+                except (DownloadError, DJBannedException) as e: self.mChannel.send(e.message)
                 dj_source = True
             else:
                 # get the song from the first of the queue
