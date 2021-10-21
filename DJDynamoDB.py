@@ -226,7 +226,6 @@ class DJDB():
                     # match query
                     if q == query_words:
                         vID = item[DJDB.Attr.vID]
-                        self.increment_qcount(vID)
                         return vID
 
             return None

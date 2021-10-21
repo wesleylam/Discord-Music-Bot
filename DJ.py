@@ -178,6 +178,7 @@ class DJ(commands.Cog):
                     self.djdb.add_query(search_term, info)
 
             # DB: INC Qcount
+            self.djdb.increment_qcount(vid)
 
             # compile
             source = await self.compile_yt_source(vid)
