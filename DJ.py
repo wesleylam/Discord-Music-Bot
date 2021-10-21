@@ -356,7 +356,7 @@ class DJ(commands.Cog):
         # send error message to text channel
         await self.notify(ctx, e.original, del_sec=None)
         # log to files
-        error_log(e.message)
+        error_log(e.original)
         # print traceback on console
         raise e.original
 
