@@ -157,7 +157,7 @@ class DJ(commands.Cog):
                 vid = yturl_to_vid(url)
                 # insert to db if not in db
                 if not self.djdb.find_song_match(vid):
-                    self.yt_search_and_insert(vid, True)
+                    self.yt_search_and_insert(vid, use_vID = True)
             else:
                 # search for url in youtube API
                 search_term = (" ".join(s)).lower()
@@ -169,7 +169,7 @@ class DJ(commands.Cog):
                     vid = match
                     # insert to db if not in db
                     if not self.djdb.find_song_match(vid):
-                        self.yt_search_and_insert(vid, True)
+                        self.yt_search_and_insert(vid, use_vID = True)
                 else:
                     # get info by searching youtube API
                     info = self.yt_search_and_insert(search_term, insert_after = False)
@@ -261,7 +261,7 @@ class DJ(commands.Cog):
         if vid:
             # actual binding when url provided
             if not self.djdb.find_song_match(vid):
-                info = yt_search(vid, use_vID = True)
+                info = self.yt_search_and_insert(vid, use_vID = True)
             else: # song exist
                 info = vid
 
