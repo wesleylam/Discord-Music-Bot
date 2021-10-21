@@ -155,10 +155,13 @@ class DJ(commands.Cog):
                     vid = match
                     if not self.djdb.find_song_match(vid): # query in db but no song entry in db
                         info = yt_search(vid, use_vID=True)
+                        # no result from youtube api (by vid)
+                        if not info: raise Exception(f"No video found: https://youtu.be/{vid}")
                         self.djdb.insert_song(info)
                 else:
                     info = yt_search(search_term)
-                    if not info: raise Exception("Nothing found in video form")
+                    # no result from youtube api (by search term)
+                    if not info: raise Exception(f"Nothing found in video form: {search_term}")
                     vid = info.vID
                     # add query to db
                     self.djdb.add_query(search_term, info)
