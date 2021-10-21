@@ -91,6 +91,20 @@ class DJ(commands.Cog):
     async def play(self, ctx, *kwords):
         await self.search_compile_play(ctx, *kwords)
 
+
+    # youtube search and insert to db
+    # return: searched song info
+    def yt_search_and_insert(self, search_term, use_vid = False, insert_after = True):
+        info = yt_search(search_term, use_vID=use_vid)
+        # no result from youtube api (by vid)
+        if not info: 
+            if use_vid: raise Exception(f"No video found: https://youtu.be/{search_term}")
+            else: raise Exception(f"Nothing found in video form: {search_term}")
+
+        if insert_after: self.djdb.insert_song(info)
+        return info
+
+
     # compile YTDLSource (audio source object) from youtube url
     # return: source object
     async def compile_yt_source(self, vid, stream = True):
@@ -141,9 +155,9 @@ class DJ(commands.Cog):
                 url = s[0]
                 # get vid from url
                 vid = yturl_to_vid(url)
+                # insert to db if not in db
                 if not self.djdb.find_song_match(vid):
-                    info = yt_search(vid, use_vID=True)
-                    self.djdb.insert_song(info)
+                    self.yt_search_and_insert(vid, True)
             else:
                 # search for url in youtube API
                 search_term = (" ".join(s)).lower()
@@ -153,15 +167,12 @@ class DJ(commands.Cog):
                 match = self.djdb.find_query_match(search_term)
                 if match:
                     vid = match
-                    if not self.djdb.find_song_match(vid): # query in db but no song entry in db
-                        info = yt_search(vid, use_vID=True)
-                        # no result from youtube api (by vid)
-                        if not info: raise Exception(f"No video found: https://youtu.be/{vid}")
-                        self.djdb.insert_song(info)
+                    # insert to db if not in db
+                    if not self.djdb.find_song_match(vid):
+                        self.yt_search_and_insert(vid, True)
                 else:
-                    info = yt_search(search_term)
-                    # no result from youtube api (by search term)
-                    if not info: raise Exception(f"Nothing found in video form: {search_term}")
+                    # get info by searching youtube API
+                    info = self.yt_search_and_insert(search_term, insert_after = False)
                     vid = info.vID
                     # add query to db
                     self.djdb.add_query(search_term, info)
