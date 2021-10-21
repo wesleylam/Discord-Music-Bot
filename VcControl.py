@@ -2,8 +2,8 @@ import discord
 import asyncio
 from options import ffmpeg_error_log
 from Views import Views, ViewUpdateType
-from youtube_dl.utils import DownloadError
 from DJBannedException import DJBannedException
+from YTDLException import YTDLException
 import time
 
 class VcControl():
@@ -14,6 +14,8 @@ class VcControl():
         self.djObj = djo
         self.vc = vc # voice client
         self.skip_author = None
+
+        self.ffmpeg_error = None
 
         # active display messages
         self.playlist = [] # [(source, m), (source, m) ....]
@@ -33,6 +35,10 @@ class VcControl():
             await self.next()
         # update other views (list)
         await self.views.update_list()
+
+    def set_stream_error(self, ffmpeg_err = None, skip_author = "Streaming error"):
+        self.ffmpeg_error = ffmpeg_err
+        self.skip_author = skip_author
 
 
     # ---------------------------- MESSAGING --------------------------- # 
@@ -61,7 +67,7 @@ class VcControl():
     ###  Main playing function  ###
     async def next(self):
         vc = self.vc
-        def after_handler(e, notify):
+        def after_handler(e, set_error):
             # read ffmpeg error
             ffmpeg_err_m = None
             with open(ffmpeg_error_log, "r") as f:
@@ -77,7 +83,7 @@ class VcControl():
 
             if ffmpeg_err_m:
                 print(f"ffmpeg error: {line}")
-                notify(f"Error in streaming ({ffmpeg_err_m})")
+                set_error(f"Error in streaming ({ffmpeg_err_m})", ffmpeg_err_m)
             
             # read standard playing error
             if e: 
@@ -99,7 +105,7 @@ class VcControl():
                 # must catch exception here, otherwise the play loop will end when yt error occur
                 try: source = await self.djObj.compile_yt_source(vid)
                 # youtube download/extract error and banned song exception
-                except (DownloadError, DJBannedException) as e: self.mChannel.send(e.message)
+                except (YTDLException, DJBannedException) as e: self.mChannel.send(e.message)
                 dj_source = True
             else:
                 # get the song from the first of the queue
@@ -112,7 +118,7 @@ class VcControl():
             self.nowPlaying = source
             # actual play
             start = time.time() # start timer for duration
-            vc.play(source, after = lambda e: after_handler(e, self.notify) )
+            vc.play(source, after = lambda e: after_handler(e, self.set_stream_error) )
             
             # show playing views for controls
             await self.views.show_playing(dj_source, source)
@@ -128,7 +134,9 @@ class VcControl():
 
             # ending the playing view and reset skip author
             await self.views.end_playing(source, self.skip_author)
+            # reset skip author and ffmpeg error
             self.skip_author = None
+            self.ffmpeg_error = None
 
         # end of playlist
         return 

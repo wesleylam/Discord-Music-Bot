@@ -15,6 +15,7 @@ from config import *
 from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log
 from DJDynamoDB import DJDB
 from DJBannedException import DJBannedException
+from YTDLException import YTDLException
 
 class DJ(commands.Cog):
     def __init__(self, bot):
@@ -94,11 +95,11 @@ class DJ(commands.Cog):
 
     # youtube search and insert to db
     # return: searched song info
-    def yt_search_and_insert(self, search_term, use_vid = False, insert_after = True):
-        info = yt_search(search_term, use_vID=use_vid)
+    def yt_search_and_insert(self, search_term, use_vID = False, insert_after = True):
+        info = yt_search(search_term, use_vID=use_vID)
         # no result from youtube api (by vid)
         if not info: 
-            if use_vid: raise Exception(f"No video found: https://youtu.be/{search_term}")
+            if use_vID: raise Exception(f"No video found: https://youtu.be/{search_term}")
             else: raise Exception(f"Nothing found in video form: {search_term}")
 
         if insert_after: self.djdb.insert_song(info)
@@ -115,7 +116,7 @@ class DJ(commands.Cog):
             data = await self.bot.loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
         except DownloadError as e: # youtube dl download error
             self.djdb.remove_song(vid)
-            raise DownloadError(f"Unable to download {url}, removed ({e.message})")
+            raise YTDLException(f"Unable to download {url}, removed ({str(e)})")
 
         if 'entries' in data:
             # take first item from a playlist

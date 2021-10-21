@@ -200,5 +200,5 @@ class Views():
 
     async def db_del_entry_callback(self, interaction, vid):
         self.vcControl.djObj.djdb.remove_song(vid)
-        await self.djObj.notify(f"Removed song from db ({vid})")
+        await self.vcControl.djObj.notify(self.vcControl.mChannel, f"Removed song from db ({vid})")
 

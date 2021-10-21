@@ -1,2 +1,4 @@
 class DJDBException(Exception):
-    pass
+    def __init__(self, message="DJ DB error"):
+        self.message = message
+        super().__init__(self.message)
