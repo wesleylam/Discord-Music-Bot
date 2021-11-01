@@ -57,7 +57,13 @@ def yturl_to_vid(url):
     else: raise Exception("Not youtube link")
 
 
-def error_log(e):
+def error_log(err_m):
+    now = datetime.datetime.now(pytz.aedt)
+    with open(default_error_log, "a") as f:
+        m = f"{now}: {err_m}\n"
+        f.write(m)
+
+def error_log_e(e):
     now = datetime.datetime.now(pytz.aedt)
     with open(default_error_log, "a") as f:
         m = f"{now}:"

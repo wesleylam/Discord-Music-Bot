@@ -252,29 +252,46 @@ class DJ(commands.Cog):
     # COMMAND: bind
     @commands.command()
     async def bind(self, ctx, *args):
+
+        # adding query binding to a vID
+        def add_binding(f_q, f_vid):
+            # actual binding when url provided
+            if not self.djdb.find_song_match(f_vid):
+                info = self.yt_search_and_insert(f_vid, use_vID = True)
+            else: # song exist
+                info = f_vid
+
+            self.djdb.add_query(f_q, info)
+
+        out_message = None
         try:
+            # case 1: url provided, delete current binding and bind [query terms] to the url
+
+            # try add query with vid
             vid = yturl_to_vid(args[-1])
             q = " ".join(args[:-1])
+
+            # delete all other query
+
+            # db: add binding
+            add_binding(q, vid)
+
+            out_message = f"Added binding \n{q} -> https://youtu.be/{vid}"
         except: 
+            # case 2: No url provided, find binded url for the [query terms]
             vid = None
             q = " ".join(args)
 
-        if vid:
-            # actual binding when url provided
-            if not self.djdb.find_song_match(vid):
-                info = self.yt_search_and_insert(vid, use_vID = True)
-            else: # song exist
-                info = vid
-
-            self.djdb.add_query(q, info)
-            await self.notify(ctx, f"Added binding \n{q} -> https://youtu.be/{vid}", del_sec=None)
-        else:
             # query binding if url not provided
             vID = self.djdb.find_query_match(q)
             if vID:
-                await self.notify(ctx, f"{q} is bind to https://youtu.be/{vID}", del_sec=None)
+                out_message = f"{q} is bind to https://youtu.be/{vID}"
             else: 
-                await self.notify(ctx, f"{q} is not bind to anything", del_sec=None)
+                out_message = f"{q} is not bind to anything"
+
+        # final output message to client
+        await self.notify(ctx, out_message, del_sec=None)
+            
 
     # COMMAND: listdj
     # list all djable songs
@@ -372,7 +389,7 @@ class DJ(commands.Cog):
         # send error message to text channel
         await self.notify(ctx, e.original, del_sec=None)
         # log to files
-        error_log(e.original)
+        error_log_e(e.original)
         # print traceback on console
         raise e.original
 
