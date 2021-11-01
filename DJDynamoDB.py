@@ -3,7 +3,7 @@ from config import dynamodb_table
 from options import default_init_vol
 from SongInfo import SongInfo
 import random
-from helper import error_log
+from helper import error_log, error_log_e
 
 # aws
 import boto3
@@ -67,6 +67,45 @@ class DJDB():
         return words
 
 
+    def match_query_action(self, query, match_return = None, 
+        q_match_break = False, action_after_q_match = (lambda : None), action_after_v_match = (lambda : None)):
+
+        # if match return, cannot reach break
+        assert match_return is not None and not q_match_break 
+
+        # scan all songs' queries
+        response = self.table.scan(
+            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}'
+        )
+        items = response['Items'] # items: list of dict
+
+        if len(items) <= 0:
+            # no songs at all
+            return None
+        else:
+            # current query chopped into words and sorted
+            query_words = self.chop_query(query)
+
+            # HEAVY: for each video, for each query O(v*q)
+            for v in items:
+                for q in v[DJDB.Attr.Queries]:
+                    # ensure q in database is sorted
+                    if not all(q[i] <= q[i+1] for i in range(len(q)-1)):
+                        error_log("Unexpected behaviour: query not sorted \nqueries: " + str(q))
+                        q.sort()
+
+                    # match query
+                    if q == query_words:
+
+                        # action after each match
+                        action_after_q_match()
+                        
+                        # return > break
+                        if match_return: return match_return
+                        if q_match_break: break
+            
+            return None
+
     # ------------------------ PUBLIC: DB direct actions --------------------------- # 
     # insert / update search
     def add_query(self, query, songInfo, song_exist = False):
@@ -100,6 +139,21 @@ class DJDB():
                 ':val': [query_words]
             }
         )
+
+    def remove_query_binding(self, vID, query):
+        # get all queries
+        song = self.db_get(vID, [DJDB.Attr.Queries])
+        try: 
+            i = song[DJDB.Attr.Queries].index(query)
+        except ValueError as e:
+            raise DJDBException(f"No query ({query}) binded for video ({vID}): {e.message}")
+
+        # remove the query from vID
+        self.table.update_item(
+            Key={ 'vID': vID },
+            UpdateExpression=f"REMOVE {DJDB.Attr.Queries}[{i}]",
+        )
+
 
 
     # insert one song
@@ -219,8 +273,7 @@ class DJDB():
                 for q in item[DJDB.Attr.Queries]:
                     # ensure q in database is sorted
                     if not all(q[i] <= q[i+1] for i in range(len(q)-1)):
-                        print("Unexpected behaviour: query not sorted")
-                        print(q)
+                        error_log("Unexpected behaviour: query not sorted \nqueries: " + str(q))
                         q.sort()
 
                     # match query
@@ -228,6 +281,7 @@ class DJDB():
                         vID = item[DJDB.Attr.vID]
                         return vID
 
+            # no match
             return None
 
 
