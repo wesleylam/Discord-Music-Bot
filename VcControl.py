@@ -105,7 +105,10 @@ class VcControl():
                 # must catch exception here, otherwise the play loop will end when yt error occur
                 try: source = await self.djObj.compile_yt_source(vid)
                 # youtube download/extract error and banned song exception
-                except (YTDLException, DJBannedException) as e: self.mChannel.send(e.message)
+                except (YTDLException, DJBannedException) as e: 
+                    await self.mChannel.send(e.message)
+                    self.djObj.djdb.remove_song(vid)
+                    continue
                 dj_source = True
             else:
                 # get the song from the first of the queue

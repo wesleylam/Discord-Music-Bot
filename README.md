@@ -9,6 +9,7 @@ Built using Python 3.7.7 with AWS DynamoDB
 - youtube-dl
 - ffmpeg
 - opus
+- pytz (timezone)
 
 ## Packages install
 - discord (async-timeout, chardet, typing-extensions, multidict, attrs, idna, yarl, aiohttp, discord.py, discord)
@@ -16,6 +17,7 @@ Built using Python 3.7.7 with AWS DynamoDB
 - discord_components
 - youtube-dl
 - ffmpeg
+- pytz
 - requests (charset-normalizer, urllib3, certifi, requests)
 - boto3 (jmespath, botocore, s3transfer, boto3)
 

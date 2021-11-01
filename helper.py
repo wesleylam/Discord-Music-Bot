@@ -1,6 +1,7 @@
 from options import banned_list, banned_reason, baseboost_list, default_error_log
 import datetime
 import traceback
+import pytz
 
 # debug printing function 
 def help(o):
@@ -57,7 +58,7 @@ def yturl_to_vid(url):
 
 
 def error_log(e):
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(pytz.aedt)
     with open(default_error_log, "a") as f:
         m = f"{now}:"
         f.write(m)

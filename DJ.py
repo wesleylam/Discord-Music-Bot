@@ -137,7 +137,7 @@ class DJ(commands.Cog):
         # check valid song
         banned_reason = is_banned(source.title)
         if banned_reason:
-            raise DJBannedException(banned_reason)
+            raise DJBannedException(f"{source.title} banned: {banned_reason}")
         else:
             return source
 
