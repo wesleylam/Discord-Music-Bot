@@ -74,9 +74,8 @@ class DJ(commands.Cog):
     async def dj(self, ctx, type = True):
         '''Turn on DJ'''
         vc = ctx.voice_client
-        if vc is None:
+        if type and vc is None:
             await self.join(ctx)
-            vc = ctx.voice_client
 
         # set vccontrol and bot status
         await self.vcControls[ctx.guild.id].set_dj_type( type )
@@ -372,7 +371,7 @@ class DJ(commands.Cog):
 
 
 
-    # for other section: 1. encore 2. reDJ 
+    # for other section: 1. encore | 2. reDJ | 3. del
     @commands.Cog.listener()
     async def on_button_click(self, interaction):
         ctx = await self.bot.get_context(interaction.message)
@@ -381,7 +380,8 @@ class DJ(commands.Cog):
 
         actions = {
             'encore': self.repeat_btn_handler,
-            'reDJ': self.reDJ_btn_handler
+            'reDJ': self.reDJ_btn_handler,
+            'del': self.del_btn_handler,
         }
         for action, handler in actions.items():
             if action in id[:len(action)]:
@@ -396,6 +396,10 @@ class DJ(commands.Cog):
     # reDJ button handler
     async def reDJ_btn_handler(self, ctx, _):
         await self.dj(ctx)
+    # del button handler (delete song from db)
+    async def del_btn_handler(self, ctx, vid):
+        self.djdb.remove_song(vid)
+        await self.notify(ctx, f"Removed song from db ({vid})")
 
 
     # handle all (command) error

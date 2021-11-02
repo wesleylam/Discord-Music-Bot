@@ -52,7 +52,7 @@ class Views():
     def playbox_components(self, extended = False):
         vc, vid = self.vc, self.vcControl.nowPlaying.vid
         btns = [
-            self.encore_button(vc, vid),
+            self.switch_djable_button(vc, vid),
             self.remove_button(vc, vid),
             self.switch_dj_button(), 
             self.leave_button(),
@@ -60,9 +60,9 @@ class Views():
         ]
         song_info_btns = [   
             # extra song settings
-            self.switch_djable_button(vc, vid),
             self.del_from_db_button(vc, vid),
             # perm vol up
+            # replace
         ]
         if extended:
             return [ btns, song_info_btns ]
@@ -125,6 +125,7 @@ class Views():
             self.switch_dj_callback
         )
 
+    # handle in DJ.py
     def encore_button(self, vc, vid):
         return Button(style=ButtonStyle.blue, label="Encore", id=f"encore_{vid}")
 
@@ -149,11 +150,9 @@ class Views():
             lambda i: self.switch_djable_callback(i, vc, vid, queue = queue),
         )
 
+    # handle in DJ.py
     def del_from_db_button(self, vc, vid):
-        return self.djbot_component_manager.add_callback(
-            Button(style=ButtonStyle.red, label="Del from DB"), 
-            lambda i: self.db_del_entry_callback(i, vid)
-        )
+        return Button(style=ButtonStyle.red, label="Del from DB", id=f"del_{vid}")
 
     def leave_button(self):
         return self.djbot_component_manager.add_callback(
@@ -178,6 +177,7 @@ class Views():
         await self.vcControl.disconnectVC()
         await self.mChannel.send(
             f"Goodbye!",
+            # handle in DJ.py
             components = [ Button(style=ButtonStyle.blue, label="DJ again", id=f"reDJ") ]
         )
 
@@ -196,8 +196,3 @@ class Views():
                     self.switch_djable_button(vc, vid, queue)
                 ]]
             )
-
-    async def db_del_entry_callback(self, interaction, vid):
-        self.vcControl.djObj.djdb.remove_song(vid)
-        await self.vcControl.djObj.notify(self.vcControl.mChannel, f"Removed song from db ({vid})")
-
