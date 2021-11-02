@@ -131,7 +131,7 @@ class VcControl():
             end = time.time()
             if self.skip_author is None: 
                 self.djObj.djdb.update_duration(vid, end - start)
-            if self.stream_err is None: 
+            if self.stream_err is not None: 
                 await self.notify(self.stream_err)
 
             # ending the playing view and reset skip author
