@@ -47,6 +47,7 @@ class DJ(commands.Cog):
     # -------------------- Join voice channel -------------------- #
     @commands.command()
     async def join(self, ctx):
+        '''Let bot join the voice channel (caller's channel / most populated channel)'''
         print(ctx.guild.id)
         if ctx.voice_client is None:
             vc = get_channel_to_join(ctx)
@@ -61,18 +62,17 @@ class DJ(commands.Cog):
     # -------------------- Leave voice channel --------------------
     @commands.command()
     async def leave(self, ctx):
+        '''Let bot leave voice channel'''
         if ctx.voice_client is None:
             raise Exception("I am not in any voice channel, use join command instead")
         else: 
-            await self.stop(ctx)
-            await ctx.voice_client.disconnect()
-            self.djdb.disconnect()
-            await self.bot_status(dj = None)
+            await self.vcControls[ctx.guild.id].disconnectVC()
             
     # -------------------- play from youtube url / default if no url -------------------- # 
     # COMMAND: dj
     @commands.command()
     async def dj(self, ctx, type = True):
+        '''Turn on DJ'''
         vc = ctx.voice_client
         if vc is None:
             await self.join(ctx)
@@ -82,14 +82,16 @@ class DJ(commands.Cog):
         await self.vcControls[ctx.guild.id].set_dj_type( type )
         await self.bot_status(dj = type)
 
+    # COMMAND: djoff
+    @commands.command()
+    async def djoff(self, ctx):
+        '''Turn off DJ'''
+        await self.dj(ctx, type=None)
 
-    # COMMAND: p
-    @commands.command()
-    async def p(self, ctx, *kwords):
-        await self.play(ctx, *kwords)
     # COMMAND: play
-    @commands.command()
+    @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords):
+        '''Play a song (search in youtube / youtube link)'''
         await self.search_compile_play(ctx, *kwords)
 
 
@@ -197,42 +199,50 @@ class DJ(commands.Cog):
     # COMMAND: nowplaying
     @commands.command()
     async def nowplaying(self, ctx):
+        '''Redisplay nowplaying board w/ controls'''
         await self.vcControls[ctx.guild.id].display_nowplaying()
 
     # COMMAND: list
     @commands.command()
     async def list(self, ctx):
+        '''List current playlist'''
         await self.vcControls[ctx.guild.id].list(ctx)
 
     # COMMAND: skip
     @commands.command()
     async def skip(self, ctx):
+        '''Skip the current song'''
         await self.vcControls[ctx.guild.id].skip(ctx.voice_client, ctx.author)
 
     # COMMAND: remove
     @commands.command()
     async def remove(self, ctx, *args):
+        '''Remove a song from playlist'''
         k = " ".join(args)
         await self.vcControls[ctx.guild.id].remove_track(ctx.voice_client, k, ctx.author)
 
     # COMMAND: clear
     @commands.command()
     async def clear(self, ctx):
+        '''Clear playlist'''
         await self.vcControls[ctx.guild.id].clear()
 
     # COMMAND: stop
     @commands.command()
     async def stop(self, ctx):
+        '''Stop player'''
         await self.vcControls[ctx.guild.id].stop()
 
     # COMMAND: vup (doubled)
     @commands.command()
     async def vup(self, ctx, n=2):
+        '''Increase current volume'''
         await self.vset(ctx, n)
 
     # COMMAND: vdown (half)
     @commands.command()
     async def vdown(self, ctx, n=0.5):
+        '''Reduce current volume'''
         await self.vset(ctx, n)
 
     # volume set
@@ -252,6 +262,10 @@ class DJ(commands.Cog):
     # COMMAND: bind
     @commands.command()
     async def bind(self, ctx, *args):
+        '''
+        Bind a search query to a url / find what url is binded to a search query
+        Usage: =bind [search term (can contain spaces)] [url (optional)]
+        '''
 
         # adding query binding to a vID
         def add_binding(f_q, f_vid):
@@ -297,21 +311,22 @@ class DJ(commands.Cog):
     # list all djable songs
     @commands.command()
     async def listdj(self, ctx, *args):
+        '''List 10 djable songs'''
         songs = self.djdb.list_all_songs(dj = True)
         await self.list(ctx, display_list = songs, title = "List 10 djable songs", none_message = "No song found")
 
 
     # COMMAND: listnotdj
-    # list all not djable songs
     @commands.command()
     async def listnotdj(self, ctx, *args):
+        '''List 10 not djable songs'''
         songs = self.djdb.list_all_songs(dj = False)
         await self.list(ctx, display_list = songs, title = "List 10 not djable songs", none_message = "No song found")
 
-    # COMMAND: searchdj
-    # list all djable songs
+    # COMMAND: search
     @commands.command()
     async def search(self, ctx, *args):
+        '''List all matching title songs'''
         q = " ".join(args)
         songs = self.djdb.search(search_term = q)
         await self.list(ctx, display_list = songs, title = f"Searching: {q}", none_message = "No song found")
@@ -339,9 +354,9 @@ class DJ(commands.Cog):
         pass
 
 
-    # -------------------------------------------------------------------------------------------- # 
-    # ------------------------------------- EVENT HANDLING --------------------------------------- # 
-    # -------------------------------------------------------------------------------------------- # 
+    # ------------------------------------------------------------------------------------------------- # 
+    # ------------------------------------- EVENT/ERROR HANDLING --------------------------------------- # 
+    # ------------------------------------------------------------------------------------------------- # 
     @commands.Cog.listener()		
     async def on_ready(self, ):
         await self.bot_status(False)
@@ -386,16 +401,23 @@ class DJ(commands.Cog):
     # handle all (command) error
     @commands.Cog.listener()
     async def on_command_error(self, ctx, e):
-        # send error message to text channel
-        await self.notify(ctx, e.original, del_sec=None)
-        # log to files
-        error_log_e(e.original)
-        # print traceback on console
-        raise e.original
-
-
+        try:
+            # send error message to text channel
+            await self.notify(ctx, e.original, del_sec=None)
+            # log to files
+            error_log_e(e.original)
+            # print traceback on console
+            raise e.original
+        except:
+            # send error message to text channel
+            await self.notify(ctx, e, del_sec=None)
+            # log to files
+            error_log_e(e)
+            # print traceback on console
+            raise e
 
 if __name__ == "__main__":
+    # set ffmpeg error log file
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
 
     # for voice client to work: you need opus and ffmpeg

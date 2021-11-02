@@ -87,8 +87,7 @@ class VcControl():
             
             # read standard playing error
             if e: 
-                print("Error occured in playing")
-                raise e
+                print(f"Error occured in playing, {e}")
             print("song ended w/o error")
 
         # prevent replay
@@ -216,4 +215,7 @@ class VcControl():
     # -------------------- DISCONNECT ------------------- # 
     async def disconnectVC(self):
         # also manage all messages?
+        await self.stop()
         await self.vc.disconnect()
+        await self.djObj.bot_status(dj = None)
+        self.djObj.djdb.disconnect()

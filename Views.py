@@ -175,7 +175,6 @@ class Views():
         )
 
     async def leave_callback(self):
-        await self.vcControl.stop()
         await self.vcControl.disconnectVC()
         await self.mChannel.send(
             f"Goodbye!",
