@@ -54,13 +54,7 @@ class VcControl():
     # ---------------------------- CONTROLS --------------------------- # 
     async def add(self, vc: discord.VoiceClient = None, source = None):
         print(source.title, source.vid, source.url)
-        m = await self.mChannel.send(
-            "Queued: " + source.title,
-            components=[[
-                self.views.remove_button(vc, source.vid, label = "Remove"),
-                self.views.switch_djable_button(vc, source.vid)
-            ]]
-        )
+        m = self.views.queue_item(vc, source)
         self.playlist.append( (source, m) ) 
         if not vc.is_playing(): 
             await self.next()
@@ -138,7 +132,7 @@ class VcControl():
             if self.skip_author is None: 
                 self.djObj.djdb.update_duration(vid, end - start)
             if self.stream_err is None: 
-                self.notify(self.stream_err)
+                await self.notify(self.stream_err)
 
             # ending the playing view and reset skip author
             await self.views.end_playing(source, self.skip_author)

@@ -68,6 +68,7 @@ def error_log(err_m):
         f.write(m)
 
 def error_log_e(e):
+    '''Reproduce error and traceback (will not throw error)'''
     now = get_time()
     with open(default_error_log, "a") as f:
         m = f"{now}:"

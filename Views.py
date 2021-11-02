@@ -69,15 +69,32 @@ class Views():
         else:
             return [ btns ]
 
+    # --------------------------------- END/SKIP VIEW ---------------------------------- #
     # replace old playing message with ended message (allow encore)
     # transforms into immutable PERMANANT message 
     async def end_playing(self, source, skip_author = None):
         head = f"Skipped by {skip_author}" if skip_author else "Ended"
         await self.playbox.edit(
             f"{head}: {source.title}",
-            components = [self.encore_button(self.vc, source.vid)]
+            components = [
+                self.encore_button(self.vc, source.vid),
+                self.del_from_db_button(self.vc, source.vid)
+            ]
         )
         self.playbox = None
+
+
+    # -------------------------------- QUEUE ITEM VIEW ---------------------------------- # 
+
+    async def queue_item(self, vc, source):
+        m = await self.mChannel.send(
+            "Queued: " + source.title,
+            components=[[
+                self.views.remove_button(vc, source.vid, label = "Remove"),
+                self.views.switch_djable_button(vc, source.vid, queue = True)
+            ]]
+        )
+        return m
 
 
     # -------------------------------- PLAYLIST VIEW ---------------------------------- # 
@@ -181,13 +198,11 @@ class Views():
             components = [ Button(style=ButtonStyle.blue, label="DJ again", id=f"reDJ") ]
         )
 
-
-    # --- MORE --- # 
     async def switch_djable_callback(self, interaction, vc, vid, queue = False):
         self.vcControl.djObj.djdb.switch_djable(vid)
         if not queue: 
             # playbox
-            await self.update_playing(ViewUpdateType.EDIT, extended = True)
+            await self.update_playing(ViewUpdateType.EDIT, extended = False)
         else: 
             # queue message
             await interaction.edit_origin(

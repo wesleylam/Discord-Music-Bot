@@ -90,32 +90,32 @@ class DJ(commands.Cog):
     @commands.command(aliases=['psearch', 'ps'])
     async def playsearch(self, ctx, *kwords):
         '''Search in youtube and play a picked song'''
-        await self.search_compile_play(ctx, *kwords)
+        s = list(kwords)
+        if len(s) <= 0 or "".join(s) == "": # throw error when no arg given 
+            raise Exception("No search term(s) given")
+        ### scp: 1. search | 2. compile | 3. play 
+        # 1. search -> get url
+        vid = await self.scp_search_choice(ctx, s,)
+
+        # 2 & 3
+        self.compile_and_play(ctx, vid)
+
 
     # COMMAND: play
     @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords):
         '''Play a song (search in youtube / youtube link)'''
-        await self.search_compile_play(ctx, *kwords)
-
-
-    # ---------------------------- SEARCH COMPILE PLAY --------------------------------- # 
-    # search url (or query), compile source and play audio
-    async def search_compile_play(self, ctx, *kwords):
-        '''scp: 1. search | 2. compile | 3. play '''
-
         s = list(kwords)
         if len(s) <= 0 or "".join(s) == "": # throw error when no arg given (alternative: play default source)
             raise Exception("No url or search term given")
-            # # play default when no url
             # source = StaticSource(discord.FFmpegPCMAudio(source=default_play_dir), volume=default_init_vol)
             # source.url = ''
-            # await self.play_in_vc(ctx)  
 
-        # search -> get url
-        if ("youtu.be" in s[0] or "youtube.com" in s[0]): # case 1: url
+        ### scp: 1. search | 2. compile | 3. play 
+        # 1. search -> get url
+        if ("youtu.be" in s[0] or "youtube.com" in s[0]): 
+            # case 1: url
             url = s[0]
-            # get vid from url
             vid = yturl_to_vid(url)
             # insert to db if not in db
             if not self.djdb.find_song_match(vid):
@@ -124,17 +124,29 @@ class DJ(commands.Cog):
             # case 2: query yt
             vid = await self.scp_search(ctx, s,)
 
+        # 2 & 3
+        self.compile_and_play(ctx, vid)
+
+
+    async def compile_and_play(self, ctx, vid):
+        '''Step 2 & 3'''
         # DB: INC Qcount
         self.djdb.increment_qcount(vid)
 
-        # compile
+        # 2. compile
         source = await self.scp_compile(vid)
-        # play
+        # 3. play
         await self.scp_play(ctx, source)
-    
 
-    # scp step 1: search (in db or youtube)
+    # ---------------------------- SEARCH COMPILE PLAY --------------------------------- #     
+
+    async def scp_search_choice(self, ctx, s):
+        '''(ps) scp step 1 (w/choice): search (youtube API only)'''
+        vid = None
+        return vid
+
     async def scp_search(self, ctx, s):
+        '''scp step 1: search (in db or youtube)'''
         # search for url in youtube API
         search_term = (" ".join(s)).lower()
         await self.notify(ctx, f"Searching: {search_term}")
