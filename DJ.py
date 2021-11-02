@@ -1,8 +1,7 @@
-from SongInfo import SongInfo
 import os
 import discord
 from discord.ext import commands
-from discord_components import ComponentsBot, component
+from discord_components import ComponentsBot
 
 from VcControl import VcControl
 from ytAPIget import yt_search
@@ -87,6 +86,12 @@ class DJ(commands.Cog):
         '''Turn off DJ'''
         await self.dj(ctx, type=None)
 
+    # COMMAND: playsearch
+    @commands.command(aliases=['psearch', 'ps'])
+    async def playsearch(self, ctx, *kwords):
+        '''Search in youtube and play a picked song'''
+        await self.search_compile_play(ctx, *kwords)
+
     # COMMAND: play
     @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords):
@@ -94,9 +99,68 @@ class DJ(commands.Cog):
         await self.search_compile_play(ctx, *kwords)
 
 
-    # youtube search and insert to db
-    # return: searched song info
+    # ---------------------------- SEARCH COMPILE PLAY --------------------------------- # 
+    # search url (or query), compile source and play audio
+    async def search_compile_play(self, ctx, *kwords):
+        '''scp: 1. search | 2. compile | 3. play '''
+
+        s = list(kwords)
+        if len(s) <= 0 or "".join(s) == "": # throw error when no arg given (alternative: play default source)
+            raise Exception("No url or search term given")
+            # # play default when no url
+            # source = StaticSource(discord.FFmpegPCMAudio(source=default_play_dir), volume=default_init_vol)
+            # source.url = ''
+            # await self.play_in_vc(ctx)  
+
+        # search -> get url
+        if ("youtu.be" in s[0] or "youtube.com" in s[0]): # case 1: url
+            url = s[0]
+            # get vid from url
+            vid = yturl_to_vid(url)
+            # insert to db if not in db
+            if not self.djdb.find_song_match(vid):
+                self.yt_search_and_insert(vid, use_vID = True)
+        else: 
+            # case 2: query yt
+            vid = await self.scp_search(ctx, s,)
+
+        # DB: INC Qcount
+        self.djdb.increment_qcount(vid)
+
+        # compile
+        source = await self.scp_compile(vid)
+        # play
+        await self.scp_play(ctx, source)
+    
+
+    # scp step 1: search (in db or youtube)
+    async def scp_search(self, ctx, s):
+        # search for url in youtube API
+        search_term = (" ".join(s)).lower()
+        await self.notify(ctx, f"Searching: {search_term}")
+        
+        # fetch vid from either db or youtube api search
+        match = self.djdb.find_query_match(search_term)
+        if match:
+            vid = match
+            # insert to db if not in db
+            if not self.djdb.find_song_match(vid):
+                self.yt_search_and_insert(vid, use_vID = True)
+        else:
+            # get info by searching youtube API
+            info = self.yt_search_and_insert(search_term, insert_after = False)
+            vid = info.vID
+            # add query to db
+            self.djdb.add_query(search_term, info)
+        return vid
+    
     def yt_search_and_insert(self, search_term, use_vID = False, insert_after = True):
+        '''
+        [ Helper function for scp_search ]
+        youtube search and insert to db
+        return: searched song info
+        '''
+        
         info = yt_search(search_term, use_vID=use_vID)
         # no result from youtube api (by vid)
         if not info: 
@@ -107,9 +171,13 @@ class DJ(commands.Cog):
         return info
 
 
-    # compile YTDLSource (audio source object) from youtube url
-    # return: source object
-    async def compile_yt_source(self, vid, stream = True):
+    async def scp_compile(self, vid, stream = True):
+        '''
+        scp step 2: compile youtube source
+        compile YTDLSource (audio source object) from youtube url
+        return: source object
+        '''
+
         url = "https://youtube.com/watch?v=" + vid
 
         try:
@@ -142,59 +210,19 @@ class DJ(commands.Cog):
         else:
             return source
 
-    # search url, compile source and play audio
-    async def search_compile_play(self, ctx, *kwords):
-        s = list(kwords)
-        if len(s) <= 0 or "".join(s) == "": # throw error when no arg given (alternative: play default source)
-            raise Exception("No url or search term given")
-            # # play default when no url
-            # source = StaticSource(discord.FFmpegPCMAudio(source=default_play_dir), volume=default_init_vol)
-            # source.url = ''
-            # await self.play_in_vc(ctx)
-        else:    
-            # get url
-            if ("youtu.be" in s[0] or "youtube.com" in s[0]):
-                url = s[0]
-                # get vid from url
-                vid = yturl_to_vid(url)
-                # insert to db if not in db
-                if not self.djdb.find_song_match(vid):
-                    self.yt_search_and_insert(vid, use_vID = True)
-            else:
-                # search for url in youtube API
-                search_term = (" ".join(s)).lower()
-                await self.notify(ctx, f"Searching: {search_term}")
-                
-                # fetch vid from either db or youtube api search
-                match = self.djdb.find_query_match(search_term)
-                if match:
-                    vid = match
-                    # insert to db if not in db
-                    if not self.djdb.find_song_match(vid):
-                        self.yt_search_and_insert(vid, use_vID = True)
-                else:
-                    # get info by searching youtube API
-                    info = self.yt_search_and_insert(search_term, insert_after = False)
-                    vid = info.vID
-                    # add query to db
-                    self.djdb.add_query(search_term, info)
-
-            # DB: INC Qcount
-            self.djdb.increment_qcount(vid)
-
-            # compile
-            source = await self.compile_yt_source(vid)
-            # play
-            await self.play_in_vc(ctx, source)
-
-    # send source to playlist and play in vc
-    async def play_in_vc(self, ctx, source):
+    async def scp_play(self, ctx, source):
+        '''
+        scp step 3: play in voice client
+        send source to playlist and play in vc
+        '''
         vc = ctx.voice_client
         if vc is None:
             await self.join(ctx)
             vc = ctx.voice_client
         await self.vcControls[ctx.guild.id].add(vc, source)
 
+
+    # ------------------------------------ CONTROLS --------------------------------------- # 
     # COMMAND: nowplaying
     @commands.command()
     async def nowplaying(self, ctx):

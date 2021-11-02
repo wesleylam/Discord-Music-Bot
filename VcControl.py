@@ -4,6 +4,7 @@ from options import ffmpeg_error_log
 from Views import Views, ViewUpdateType
 from DJBannedException import DJBannedException
 from YTDLException import YTDLException
+from helper import error_log_e, error_log
 import time
 
 class VcControl():
@@ -15,7 +16,7 @@ class VcControl():
         self.vc = vc # voice client
         self.skip_author = None
 
-        self.ffmpeg_error = None
+        self.stream_err = None
 
         # active display messages
         self.playlist = [] # [(source, m), (source, m) ....]
@@ -36,8 +37,8 @@ class VcControl():
         # update other views (list)
         await self.views.update_list()
 
-    def set_stream_error(self, ffmpeg_err = None, skip_author = "Streaming error"):
-        self.ffmpeg_error = ffmpeg_err
+    def set_stream_error(self, stream_err = None, skip_author = "Streaming error"):
+        self.stream_err = stream_err
         self.skip_author = skip_author
 
 
@@ -74,7 +75,6 @@ class VcControl():
                 # get to last line
                 for line in f.readlines():
                     pass
-            
                 # check for possible error
                 if "403 Forbidden" in line[-50:]:
                     ffmpeg_err_m = "Access denied"
@@ -82,12 +82,16 @@ class VcControl():
                     ffmpeg_err_m = "Disrupted"
 
             if ffmpeg_err_m:
-                print(f"ffmpeg error: {line}")
+                message = f"ffmpeg error: {line}"
+                error_log(message)
+                print(message)
                 set_error(f"Error in streaming ({ffmpeg_err_m})", ffmpeg_err_m)
             
             # read standard playing error
             if e: 
-                print(f"Error occured in playing, {e}")
+                error_log_e(e)
+                print(f"Error occured while playing, {e}")
+                set_error(f"Error occured while playing", "Error")
             print("song ended w/o error")
 
         # prevent replay
@@ -102,7 +106,7 @@ class VcControl():
                 vid = self.djObj.djdb.find_rand_song()
                 
                 # must catch exception here, otherwise the play loop will end when yt error occur
-                try: source = await self.djObj.compile_yt_source(vid)
+                try: source = await self.djObj.scp_compile(vid)
                 # youtube download/extract error and banned song exception
                 except (YTDLException, DJBannedException) as e: 
                     await self.mChannel.send(e.message)
@@ -133,12 +137,14 @@ class VcControl():
             end = time.time()
             if self.skip_author is None: 
                 self.djObj.djdb.update_duration(vid, end - start)
+            if self.stream_err is None: 
+                self.notify(self.stream_err)
 
             # ending the playing view and reset skip author
             await self.views.end_playing(source, self.skip_author)
-            # reset skip author and ffmpeg error
+            # reset skip author and stream error
             self.skip_author = None
-            self.ffmpeg_error = None
+            self.stream_err = None
 
         # end of playlist
         return 
@@ -215,7 +221,7 @@ class VcControl():
     # -------------------- DISCONNECT ------------------- # 
     async def disconnectVC(self):
         # also manage all messages?
+        await self.set_dj_type(None)
         await self.stop()
         await self.vc.disconnect()
-        await self.djObj.bot_status(dj = None)
         self.djObj.djdb.disconnect()
