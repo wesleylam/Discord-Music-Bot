@@ -98,7 +98,7 @@ class DJ(commands.Cog):
         vid = await self.scp_search_choice(ctx, s,)
 
         # 2 & 3
-        self.compile_and_play(ctx, vid)
+        await self.compile_and_play(ctx, vid)
 
 
     # COMMAND: play
@@ -125,7 +125,7 @@ class DJ(commands.Cog):
             vid = await self.scp_search(ctx, s,)
 
         # 2 & 3
-        self.compile_and_play(ctx, vid)
+        await self.compile_and_play(ctx, vid)
 
 
     async def compile_and_play(self, ctx, vid):
@@ -241,10 +241,10 @@ class DJ(commands.Cog):
         '''Redisplay nowplaying board w/ controls'''
         await self.vcControls[ctx.guild.id].display_nowplaying()
 
-    # COMMAND: list
-    @commands.command()
-    async def list(self, ctx):
-        '''List current playlist'''
+    # COMMAND: queue
+    @commands.command(aliases=['playlist'])
+    async def queue(self, ctx):
+        '''List current playlist queue'''
         await self.vcControls[ctx.guild.id].list(ctx)
 
     # COMMAND: skip
@@ -432,7 +432,7 @@ class DJ(commands.Cog):
     # repeat button handler
     async def repeat_btn_handler(self, ctx, vid):
         url = "youtu.be/" + vid
-        await self.search_compile_play(ctx, url)
+        await self.play(ctx, url)
     # reDJ button handler
     async def reDJ_btn_handler(self, ctx, _):
         await self.dj(ctx)

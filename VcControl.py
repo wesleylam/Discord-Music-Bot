@@ -54,7 +54,7 @@ class VcControl():
     # ---------------------------- CONTROLS --------------------------- # 
     async def add(self, vc: discord.VoiceClient = None, source = None):
         print(source.title, source.vid, source.url)
-        m = self.views.queue_item(vc, source)
+        m = await self.views.queue_item(vc, source)
         self.playlist.append( (source, m) ) 
         if not vc.is_playing(): 
             await self.next()

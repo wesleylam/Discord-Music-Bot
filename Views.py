@@ -90,8 +90,8 @@ class Views():
         m = await self.mChannel.send(
             "Queued: " + source.title,
             components=[[
-                self.views.remove_button(vc, source.vid, label = "Remove"),
-                self.views.switch_djable_button(vc, source.vid, queue = True)
+                self.remove_button(vc, source.vid, label = "Remove"),
+                self.switch_djable_button(vc, source.vid, queue = True)
             ]]
         )
         return m
