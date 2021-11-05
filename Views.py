@@ -21,6 +21,7 @@ class Views():
         self.playbox = None
         self.playing_source = None
         self.listbox = None
+        self.queue_items = [] # all queue messages
 
 
     # -------------------------------- NOWPLAYING VIEW ---------------------------------- # 
@@ -76,26 +77,31 @@ class Views():
         head = f"Skipped by {skip_author}" if skip_author else "Ended"
         await self.playbox.edit(
             f"{head}: {source.title}",
-            components = [
+            components = [[
                 self.encore_button(self.vc, source.vid),
-                self.del_from_db_button(self.vc, source.vid)
-            ]
+                self.del_from_db_button(self.vc, source.vid),
+            ]]
         )
         self.playbox = None
 
 
     # -------------------------------- QUEUE ITEM VIEW ---------------------------------- # 
 
-    async def queue_item(self, vc, source):
+    async def add_queue_item(self, vc, source, t):
+        vid = source.vid
         m = await self.mChannel.send(
             "Queued: " + source.title,
             components=[[
                 self.remove_button(vc, source.vid, label = "Remove"),
-                self.switch_djable_button(vc, source.vid, queue = True)
+                self.switch_djable_button(vc, vid, queue = True)
             ]]
         )
-        return m
+        self.queue_items.append(m, t)
 
+    async def del_queue_item(self, t_check):
+        m, t = self.queue_items.pop()
+        assert t == t_check
+        await m.delete()
 
     # -------------------------------- PLAYLIST VIEW ---------------------------------- # 
 
@@ -135,9 +141,9 @@ class Views():
     def switch_dj_button(self):
         return self.djbot_component_manager.add_callback(
             (   
-                Button(style=ButtonStyle.green, label="DJ: On")
+                Button(style=ButtonStyle.green, label="DJ: On", id="djoff")
                 if self.vcControl.dj else
-                Button(style=ButtonStyle.red, label="DJ: Off") 
+                Button(style=ButtonStyle.red, label="DJ: Off", id="djon") 
             ),
             self.switch_dj_callback
         )
@@ -148,21 +154,21 @@ class Views():
 
     def remove_button(self, vc, vid, label = "Skip"):
         return self.djbot_component_manager.add_callback(
-            Button(style=ButtonStyle.red, label=label), 
+            Button(style=ButtonStyle.red, label=label, id=f"{label}_{vid}"), 
             lambda i: self.remove_callback(i, vc, vid)
         )
 
     def song_info_button(self, vc, vid):
         return self.djbot_component_manager.add_callback(
-            Button(style=ButtonStyle.gray, label="Song Settings"), 
+            Button(style=ButtonStyle.gray, label="Song Settings", id=f"{vid}_song_info"), 
             self.song_info_callback
         )
 
     def switch_djable_button(self, vc, vid, queue = False):
         return self.djbot_component_manager.add_callback(
-            (   Button(style=ButtonStyle.green, label="Now: DJable", id = "djable", custom_id = "djable")
+            (   Button(style=ButtonStyle.green, label="Now: DJable", id = f"{vid}_switch_djable")
                 if self.vcControl.djObj.djdb.find_djable(vid) else
-                Button(style=ButtonStyle.red, label="Now: Not DJable", id = "djable", custom_id = "djable") 
+                Button(style=ButtonStyle.red, label="Now: Not DJable", id = f"{vid}_switch_djable") 
             ),
             lambda i: self.switch_djable_callback(i, vc, vid, queue = queue),
         )
@@ -173,7 +179,7 @@ class Views():
 
     def leave_button(self):
         return self.djbot_component_manager.add_callback(
-            Button(style=ButtonStyle.gray, label="Leave"), 
+            Button(style=ButtonStyle.gray, label="Leave", id="leave_vc"), 
             lambda i: self.leave_callback()
         )
 
@@ -191,12 +197,12 @@ class Views():
         )
 
     async def leave_callback(self):
-        await self.vcControl.disconnectVC()
         await self.mChannel.send(
             f"Goodbye!",
             # handle in DJ.py
             components = [ Button(style=ButtonStyle.blue, label="DJ again", id=f"reDJ") ]
         )
+        await self.vcControl.disconnectVC()
 
     async def switch_djable_callback(self, interaction, vc, vid, queue = False):
         self.vcControl.djObj.djdb.switch_djable(vid)
@@ -207,7 +213,7 @@ class Views():
             # queue message
             await interaction.edit_origin(
                 components = [[
-                    self.remove_button(vc, vid),
+                    self.remove_button(vc, vid, label="Remove"),
                     self.switch_djable_button(vc, vid, queue)
                 ]]
             )

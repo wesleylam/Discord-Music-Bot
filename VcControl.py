@@ -54,8 +54,11 @@ class VcControl():
     # ---------------------------- CONTROLS --------------------------- # 
     async def add(self, vc: discord.VoiceClient = None, source = None):
         print(source.title, source.vid, source.url)
-        m = await self.views.queue_item(vc, source)
-        self.playlist.append( (source, m) ) 
+        t = time.time()
+        # send queue message
+        await self.views.add_queue(vc, source, t)
+        # append source to playlist
+        self.playlist.append( (source, t) ) 
         if not vc.is_playing(): 
             await self.next()
 
@@ -109,9 +112,9 @@ class VcControl():
                 dj_source = True
             else:
                 # get the song from the first of the queue
-                source, q_message = self.playlist.pop(0)
+                source, t_check = self.playlist.pop(0)
                 # delete the corresponding queuing message
-                await q_message.delete()
+                self.views.del_queue_item(t_check)
                 dj_source = False
 
             vid = source.vid
