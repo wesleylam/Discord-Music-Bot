@@ -450,15 +450,11 @@ class DJ(commands.Cog):
             await self.notify(ctx, e.original, del_sec=None)
             # log to files
             error_log_e(e.original)
-            # print traceback on console
-            raise e.original
         except:
             # send error message to text channel
             await self.notify(ctx, e, del_sec=None)
             # log to files
             error_log_e(e)
-            # print traceback on console
-            raise e
 
 if __name__ == "__main__":
     # set ffmpeg error log file
