@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from discord_components import ComponentsBot
+from DJDBException import DJDBException
 
 from VcControl import VcControl
 from Views import Views
@@ -53,7 +54,7 @@ class DJ(commands.Cog):
             vc = get_channel_to_join(ctx)
             self.djdb.connect()
             await vc.connect()
-            # create new playlist instance, send current channel for further messaging
+            # create new control instance, send current channel for further messaging
             self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self, ctx.voice_client, ctx.guild.id)
         else: 
             n = ctx.voice_client.channel.name
@@ -111,9 +112,9 @@ class DJ(commands.Cog):
         # 2 & 3
         await self.compile_and_play(ctx, vid)
 
-    async def process_song_input(self, ctx, args):
+    async def process_song_input(self, ctx, args, DBonly = False):
         '''
-        Helper function: process song input (from link or search terms)
+        Process song input (from link or search terms)
         return vid
         '''
         args = list(args)
@@ -132,8 +133,8 @@ class DJ(commands.Cog):
             if not self.djdb.find_song_match(vid):
                 self.yt_search_and_insert(vid, use_vID = True)
         else: 
-            # case 2: query yt
-            vid = await self.scp_search(ctx, args,)
+            # case 2: find in query db (or query yt if none)
+            vid = await self.scp_search(ctx, args, DBonly = DBonly)
 
         return vid
         
@@ -151,12 +152,12 @@ class DJ(commands.Cog):
 
 # ---------------------------- SEARCH COMPILE PLAY --------------------------------- #     
 
-    async def scp_search_choice(self, ctx, s):
+    async def scp_search_choice(self, ctx, s, DBonly = False):
         '''(ps) scp step 1 (w/choice): search (youtube API only)'''
         vid = None
         return vid
 
-    async def scp_search(self, ctx, s):
+    async def scp_search(self, ctx, s, DBonly = False):
         '''scp step 1: search (in db or youtube)'''
         # search for url in youtube API
         search_term = (" ".join(s)).lower()
@@ -166,10 +167,14 @@ class DJ(commands.Cog):
         match = self.djdb.find_query_match(search_term)
         if match:
             vid = match
-            # insert to db if not in db
+            # insert to db if not in db (Depreciated, safety catch)
             if not self.djdb.find_song_match(vid):
+                error_log(f"(Unexpected behaviour) Query found but song not in DB: {search_term} -> {vid}")
+                await self.notify(ctx, "Unexpected behaviour: see log", del_sec = None)
                 self.yt_search_and_insert(vid, use_vID = True)
         else:
+            if DBonly: raise DJDBException(f"No item found for {search_term}")
+
             # get info by searching youtube API
             info = self.yt_search_and_insert(search_term, insert_after = False)
             vid = info.vID
@@ -309,13 +314,37 @@ class DJ(commands.Cog):
 # -------------------------------------------------------------------------------------------- # 
 # --------------------------------------- DB RELATED ----------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
+    
+    # COMMAND: songinfo
+    @commands.command(aliases=['info', 'si'])
+    async def songinfo(self, ctx, *args):
+        '''Get song info of a song (DB entry)'''
+        vid = await self.process_song_input(ctx, args, DBonly = True)
+
+        item = self.djdb.db_get(vid)
+        Title = item[DJDB.Attr.Title]
+        url = vid_to_url(item[DJDB.Attr.vID])
+        DJable = "**[DJable]**" if item[DJDB.Attr.DJable] else ""
+        Duration = item[DJDB.Attr.Duration]
+        Queries = "\n".join( [ f"{i+1}: " + " ".join([s for s in q]) for i, q in enumerate(item[DJDB.Attr.Queries]) ] )
+        Qcount = item[DJDB.Attr.Qcount]
+
+        embedInfo = discord.Embed(title=Title, description=url + " " + DJable, color=0x00ff00)
+        embedInfo.add_field(name="Queue count", value=Qcount, inline=True)
+        embedInfo.add_field(name="Duration", value=readable_time(Duration), inline=True)
+        if Queries != "": 
+            embedInfo.add_field(name="Queries", value=Queries, inline=False)
+
+        await ctx.send(
+            embed = embedInfo
+        )
 
     
     # COMMAND: notDJable
     @commands.command()
     async def notDJable(self, ctx, *args):
         '''Turn a song off from DJ mode'''
-        vid = await self.process_song_input(ctx, args)
+        vid = await self.process_song_input(ctx, args, DBonly = True)
 
         self.djdb.set_djable(vid, False)
         await self.notify(ctx, f"{vid_to_url(vid)} is no longer DJable")
@@ -324,7 +353,7 @@ class DJ(commands.Cog):
     @commands.command()
     async def DJable(self, ctx, *args):
         '''Allow a song to play in DJ mode'''
-        vid = await self.process_song_input(ctx, args)
+        vid = await self.process_song_input(ctx, args, DBonly = True)
 
         self.djdb.set_djable(vid, True)
         await self.notify(ctx, f"{vid_to_url(vid)} is now DJable")
@@ -333,7 +362,7 @@ class DJ(commands.Cog):
     @commands.command(aliases=['rmFromDB', 'rmDB'])
     async def removeFromDB(self, ctx, *args):
         '''Remove a song from database'''
-        vid = await self.process_song_input(ctx, args)
+        vid = await self.process_song_input(ctx, args, DBonly = True)
 
         await self.del_btn_handler(ctx, [vid])
 
@@ -496,6 +525,7 @@ class DJ(commands.Cog):
             await self.notify(ctx, e, del_sec=None)
             # log to files
             error_log_e(e)
+        raise e
 
 
 # -------------------------------------------- MAIN ------------------------------------------------ # 

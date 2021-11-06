@@ -67,9 +67,26 @@ def vid_to_url(vid):
     return f"https://youtu.be/{vid}"
 
 
+# ----------------------------------------- TIME RELATED ----------------------------------------------- # 
 def get_time():
     tz = pytz.timezone('Australia/Melbourne')
     return datetime.datetime.now(tz=tz)
+
+def readable_time(sec):
+    s = ""
+    min = int(sec / 60)
+    sec = sec % 60
+    if min > 0: 
+        s += f"{min} min"
+        if min > 1: s += "s"
+        s += " "
+        
+    s += f"{sec} sec"
+    if sec > 1: s += "s"
+    return s
+
+
+# ----------------------------------------- ERROR LOGGING -------------------------------------------- # 
 
 def error_log(err_m):
     now = get_time()

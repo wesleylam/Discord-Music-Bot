@@ -32,6 +32,7 @@ class DJDB():
         pass
 
     # ------------------------ PRIVATE: DB direct actions --------------------------- # 
+    # ** no longer private (used in DJ/songinfo) **
     def db_get(self, vID, get_attrs = None):
         # get        
         if get_attrs:
