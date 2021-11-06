@@ -1,6 +1,6 @@
 import discord
 from discord_components import Button, ButtonStyle
-from helper import help
+from helper import *
 from enum import Enum
 import random
 
@@ -13,7 +13,7 @@ class Views():
         self.mChannel = mChannel # message channel
         self.nowPlaying = None
         self.dj = None # dj type: string?
-        self.vc = vc # voice client
+        self.vc = vc # voice client (NOT voice channel)
         self.vcControl = vcControl
         self.djbot_component_manager = self.vcControl.djObj.bot.components_manager
         self.guild_id = guild_id
@@ -27,9 +27,10 @@ class Views():
 
     # Static function
     def decompose_btn_id(id):
-        '''Get guild_id, action (, params) from button ID'''
+        '''Get guild_id, action, (params) from button ID'''
         tokens = id.split("_")
         return tokens[0], tokens[1], tokens[2:]
+
 
     def BIgen(self, action, *args):
         '''
@@ -45,7 +46,7 @@ class Views():
 
     # send message on text channel with action buttons
     async def show_playing(self, dj_source, source, extended = False):
-        dj_string = "[DJ] " if dj_source else ""
+        dj_string = "**[DJ]** " if dj_source else ""
         self.playbox = await self.mChannel.send(
             f"{dj_string}Now Playing: {source.title} \n{source.url}",
             components = self.playbox_components(extended = extended)
@@ -87,7 +88,7 @@ class Views():
         else:
             return [ btns ]
 
-    # --------------------------------- END/SKIP VIEW ---------------------------------- #
+    # --------------------------------- AFTER/SKIP VIEW ---------------------------------- #
     # replace old playing message with ended message (allow encore)
     # transforms into immutable PERMANANT message 
     async def end_playing(self, source, skip_author = None):
@@ -105,6 +106,7 @@ class Views():
     # -------------------------------- QUEUE ITEM VIEW ---------------------------------- # 
 
     async def add_queue_item(self, vc, source, t):
+        '''Add a queue message'''
         vid = source.vid
         m = await self.mChannel.send(
             "Queued: " + source.title,
@@ -116,8 +118,9 @@ class Views():
         self.queue_items.append( (m, t) )
 
     async def del_queue_item(self, t_check):
+        '''Delete the earliest queue message'''
         (m, t) = self.queue_items.pop()
-        # time as check
+        # verify info (time as check)
         assert t == t_check
         await m.delete()
 

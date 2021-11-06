@@ -14,6 +14,7 @@ class DJDB():
     class Attr():
         vID = "vID"
         Title = "Title"
+        STitle = "STitle" # Search Title (all lower case for search)
         ChannelID = "ChannelID"
         Queries = "Queries"
         DJable = "DJable"
@@ -167,6 +168,7 @@ class DJDB():
 
         # get all info and default parameters
         item = songInfo.dictify_info()    
+        item[DJDB.Attr.STitle] = item[DJDB.Attr.Title].lower()
         item[DJDB.Attr.Queries] = []
         item[DJDB.Attr.DJable] = True
         item[DJDB.Attr.SongVol] = int(songVol * 100) # as percentage (need int)
@@ -319,7 +321,7 @@ class DJDB():
 
         # IDEA: can implement multiple search terms?
         response = self.table.scan(
-            FilterExpression = Attr(DJDB.Attr.Title).contains(search_term),
+            FilterExpression = Attr(DJDB.Attr.STitle).contains(search_term),
             ProjectionExpression = needed_attr_str
         )
         items = response['Items'] # items: list of dict
