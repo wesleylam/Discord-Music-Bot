@@ -96,10 +96,11 @@ class Views():
                 self.switch_djable_button(vc, vid, queue = True)
             ]]
         )
-        self.queue_items.append(m, t)
+        self.queue_items.append( (m, t) )
 
     async def del_queue_item(self, t_check):
-        m, t = self.queue_items.pop()
+        (m, t) = self.queue_items.pop()
+        # time as check
         assert t == t_check
         await m.delete()
 

@@ -8,7 +8,7 @@ from helper import error_log_e, error_log
 import time
 
 class VcControl():
-    def __init__(self, mChannel, djo, vc) -> None:
+    def __init__(self, mChannel, djo, vc, guild_id) -> None:
         self.mChannel = mChannel # message channel
         self.nowPlaying = None
         self.dj = None # dj type: string?
@@ -17,6 +17,7 @@ class VcControl():
         self.skip_author = None
 
         self.stream_err = None
+        self.guild_id = guild_id
 
         # active display messages
         self.playlist = [] # [(source, m), (source, m) ....]
@@ -56,7 +57,7 @@ class VcControl():
         print(source.title, source.vid, source.url)
         t = time.time()
         # send queue message
-        await self.views.add_queue(vc, source, t)
+        await self.views.add_queue_item(vc, source, t)
         # append source to playlist
         self.playlist.append( (source, t) ) 
         if not vc.is_playing(): 
@@ -114,7 +115,7 @@ class VcControl():
                 # get the song from the first of the queue
                 source, t_check = self.playlist.pop(0)
                 # delete the corresponding queuing message
-                self.views.del_queue_item(t_check)
+                await self.views.del_queue_item(t_check)
                 dj_source = False
 
             vid = source.vid
