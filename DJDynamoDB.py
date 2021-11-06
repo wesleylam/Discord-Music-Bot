@@ -162,7 +162,7 @@ class DJDB():
         if song:
             # skip if song exist
             return  
-        print(f"Song not found {songInfo.vID}, inserting to db")
+        print(f"Song not found {songInfo.vID} in DB, inserting to DB")
 
         # get all info and default parameters
         item = songInfo.dictify_info()    

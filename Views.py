@@ -9,19 +9,36 @@ class ViewUpdateType(Enum):
     EDIT = 2
 
 class Views():
-    def __init__(self, mChannel, vc, vcControl) -> None:
+    def __init__(self, mChannel, vc, vcControl, guild_id) -> None:
         self.mChannel = mChannel # message channel
         self.nowPlaying = None
         self.dj = None # dj type: string?
         self.vc = vc # voice client
         self.vcControl = vcControl
         self.djbot_component_manager = self.vcControl.djObj.bot.components_manager
+        self.guild_id = guild_id
 
         # active display messages
         self.playbox = None
         self.playing_source = None
         self.listbox = None
         self.queue_items = [] # all queue messages
+
+
+    # Static function
+    def decompose_btn_id(id):
+        '''Get guild_id, action (, params) from button ID'''
+        tokens = id.split("_")
+        return tokens[0], tokens[1], tokens[2:]
+
+    def BIgen(self, action, *args):
+        '''
+        Unique button identifier generation
+        label: [guild_id]_[action]_[identifier(s)]
+        '''
+        full_args = [action] + list(args)
+        linked_stringed_args = "_".join( list( [str(a) for a in full_args] ) )
+        return f"{self.guild_id}_{linked_stringed_args}"
 
 
     # -------------------------------- NOWPLAYING VIEW ---------------------------------- # 
@@ -142,47 +159,50 @@ class Views():
     def switch_dj_button(self):
         return self.djbot_component_manager.add_callback(
             (   
-                Button(style=ButtonStyle.green, label="DJ: On", id="djoff")
+                Button(style=ButtonStyle.green, label="DJ: On", id=self.BIgen("djoff"))
                 if self.vcControl.dj else
-                Button(style=ButtonStyle.red, label="DJ: Off", id="djon") 
+                Button(style=ButtonStyle.red, label="DJ: Off", id=self.BIgen("djon")) 
             ),
             self.switch_dj_callback
         )
 
     # handle in DJ.py
     def encore_button(self, vc, vid):
-        return Button(style=ButtonStyle.blue, label="Encore", id=f"encore_{vid}")
+        return Button(style=ButtonStyle.blue, label="Encore", id=self.BIgen("encore", vid))
 
     def remove_button(self, vc, vid, label = "Skip"):
         return self.djbot_component_manager.add_callback(
-            Button(style=ButtonStyle.red, label=label, id=f"{label}_{vid}"), 
+            Button(style=ButtonStyle.red, label=label, id=self.BIgen(label, vid)), 
             lambda i: self.remove_callback(i, vc, vid)
         )
 
     def song_info_button(self, vc, vid):
         return self.djbot_component_manager.add_callback(
-            Button(style=ButtonStyle.gray, label="Song Settings", id=f"{vid}_song_info"), 
+            Button(style=ButtonStyle.gray, label="Song Settings", id=self.BIgen("songinfo", vid)), 
             self.song_info_callback
         )
 
     def switch_djable_button(self, vc, vid, queue = False):
         return self.djbot_component_manager.add_callback(
-            (   Button(style=ButtonStyle.green, label="Now: DJable", id = f"{vid}_switch_djable")
+            (   Button(style=ButtonStyle.green, label="Now: DJable", id=self.BIgen("switchdjable", vid))
                 if self.vcControl.djObj.djdb.find_djable(vid) else
-                Button(style=ButtonStyle.red, label="Now: Not DJable", id = f"{vid}_switch_djable") 
+                Button(style=ButtonStyle.red, label="Now: Not DJable", id=self.BIgen("switchdjable", vid)) 
             ),
             lambda i: self.switch_djable_callback(i, vc, vid, queue = queue),
         )
 
     # handle in DJ.py
     def del_from_db_button(self, vc, vid):
-        return Button(style=ButtonStyle.red, label="Del from DB", id=f"del_{vid}")
+        return Button(style=ButtonStyle.red, label="Del from DB", id=self.BIgen("del", vid))
 
     def leave_button(self):
         return self.djbot_component_manager.add_callback(
-            Button(style=ButtonStyle.gray, label="Leave", id="leave_vc"), 
+            Button(style=ButtonStyle.gray, label="Leave", id=self.BIgen("leave")), 
             lambda i: self.leave_callback()
         )
+
+    def reDJ_button(self):
+        return Button(style=ButtonStyle.blue, label="DJ again", id=self.BIgen("reDJ"))
 
     # --------------------- BUTTONS CALLBACK -------------------- # 
     async def switch_dj_callback(self, interaction):
@@ -201,7 +221,7 @@ class Views():
         await self.mChannel.send(
             f"Goodbye!",
             # handle in DJ.py
-            components = [ Button(style=ButtonStyle.blue, label="DJ again", id=f"reDJ") ]
+            components = [ self.reDJ_button() ]
         )
         await self.vcControl.disconnectVC()
 

@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord_components import ComponentsBot
 
 from VcControl import VcControl
+from Views import Views
 from ytAPIget import yt_search
 import youtube_dl
 from YTDLSource import YTDLSource, StaticSource
@@ -450,33 +451,34 @@ class DJ(commands.Cog):
 
 
 
-    # for other section: 1. encore | 2. reDJ | 3. del
+    # always available buttons: 1. encore | 2. reDJ | 3. del
     @commands.Cog.listener()
     async def on_button_click(self, interaction):
         ctx = await self.bot.get_context(interaction.message)
 
         id = interaction.component.id
+        guild_id, received_action, other_param = Views.decompose_btn_id(id)
 
         actions = {
             'encore': self.repeat_btn_handler,
             'reDJ': self.reDJ_btn_handler,
             'del': self.del_btn_handler,
         }
-        for action, handler in actions.items():
-            if action in id[:len(action)]:
-                await handler(ctx, id[len(action)+1:])
-                return # maybe break
+        try: await actions[received_action](ctx, other_param)
+        except KeyError: pass # button not mapped in action above (not global btn)
 
     # --------- ACTION HANDLERS --------- # 
     # repeat button handler
-    async def repeat_btn_handler(self, ctx, vid):
+    async def repeat_btn_handler(self, ctx, p):
+        vid = p[0]
         url = vid_to_url(vid)
         await self.play(ctx, url)
     # reDJ button handler
     async def reDJ_btn_handler(self, ctx, _):
         await self.dj(ctx)
     # del button handler (delete song from db)
-    async def del_btn_handler(self, ctx, vid):
+    async def del_btn_handler(self, ctx, p):
+        vid = p[0]
         self.djdb.remove_song(vid)
         await self.notify(ctx, f"Removed song from db ({vid})")
 

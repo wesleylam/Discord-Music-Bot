@@ -21,7 +21,7 @@ class VcControl():
 
         # active display messages
         self.playlist = [] # [(source, m), (source, m) ....]
-        self.views = Views(mChannel, vc, self)
+        self.views = Views(mChannel, vc, self, guild_id)
 
     # ------------------------- SETTER / UPDATER ------------------------- # 
     # (delete all updatable message when ending sessions)
