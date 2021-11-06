@@ -328,6 +328,13 @@ class DJ(commands.Cog):
         self.djdb.set_djable(vid, True)
         await self.notify(ctx, f"{vid_to_url(vid)} is now DJable")
 
+    # COMMAND: removeFromDB
+    @commands.command(aliases=['rmFromDB', 'rmDB'])
+    async def removeFromDB(self, ctx, *args):
+        '''Remove a song from database'''
+        vid = await self.process_song_input(ctx, args)
+
+        await self.del_btn_handler(ctx, vid)
 
     
     # COMMAND: bind
