@@ -335,7 +335,7 @@ class DJ(commands.Cog):
         '''Remove a song from database'''
         vid = await self.process_song_input(ctx, args)
 
-        await self.del_btn_handler(ctx, vid)
+        await self.del_btn_handler(ctx, [vid])
 
     
     # COMMAND: bind
