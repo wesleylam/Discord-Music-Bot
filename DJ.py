@@ -40,8 +40,8 @@ class DJ(commands.Cog):
             assert type(del_sec) == int
             await m.delete(delay = del_sec)
 
-    # -------------------------------------------------------------------------------------------- # 
-    # ------------------------------------- VOICE CONTROL ---------------------------------------- # 
+# -------------------------------------------------------------------------------------------- # 
+# ------------------------------------- VOICE CONTROL ---------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
     # -------------------- Join voice channel -------------------- #
     @commands.command()
@@ -105,27 +105,37 @@ class DJ(commands.Cog):
     @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords):
         '''Play a song (search in youtube / youtube link)'''
-        s = list(kwords)
-        if len(s) <= 0 or "".join(s) == "": # throw error when no arg given (alternative: play default source)
+        vid = await self.process_song_input(ctx, kwords)
+
+        # 2 & 3
+        await self.compile_and_play(ctx, vid)
+
+    async def process_song_input(self, ctx, args):
+        '''
+        Helper function: process song input (from link or search terms)
+        return vid
+        '''
+        args = list(args)
+        if len(args) <= 0 or "".join(args) == "": # throw error when no arg given (alternative: play default source)
             raise Exception("No url or search term given")
             # source = StaticSource(discord.FFmpegPCMAudio(source=default_play_dir), volume=default_init_vol)
             # source.url = ''
 
+        url = args[0]
         ### scp: 1. search | 2. compile | 3. play 
         # 1. search -> get url
-        if ("youtu.be" in s[0] or "youtube.com" in s[0]): 
+        if is_ytlink(url): 
             # case 1: url
-            url = s[0]
             vid = yturl_to_vid(url)
             # insert to db if not in db
             if not self.djdb.find_song_match(vid):
                 self.yt_search_and_insert(vid, use_vID = True)
         else: 
             # case 2: query yt
-            vid = await self.scp_search(ctx, s,)
+            vid = await self.scp_search(ctx, args,)
 
-        # 2 & 3
-        await self.compile_and_play(ctx, vid)
+        return vid
+        
 
 
     async def compile_and_play(self, ctx, vid):
@@ -138,7 +148,7 @@ class DJ(commands.Cog):
         # 3. play
         await self.scp_play(ctx, source)
 
-    # ---------------------------- SEARCH COMPILE PLAY --------------------------------- #     
+# ---------------------------- SEARCH COMPILE PLAY --------------------------------- #     
 
     async def scp_search_choice(self, ctx, s):
         '''(ps) scp step 1 (w/choice): search (youtube API only)'''
@@ -176,7 +186,7 @@ class DJ(commands.Cog):
         info = yt_search(search_term, use_vID=use_vID)
         # no result from youtube api (by vid)
         if not info: 
-            if use_vID: raise Exception(f"No video found: https://youtu.be/{search_term}")
+            if use_vID: raise Exception(f"No video found: {vid_to_url(search_term)}")
             else: raise Exception(f"Nothing found in video form: {search_term}")
 
         if insert_after: self.djdb.insert_song(info)
@@ -234,7 +244,7 @@ class DJ(commands.Cog):
         await self.vcControls[ctx.guild.id].add(vc, source)
 
 
-    # ------------------------------------ CONTROLS --------------------------------------- # 
+# ------------------------------------ CONTROLS --------------------------------------- # 
     # COMMAND: nowplaying
     @commands.command()
     async def nowplaying(self, ctx):
@@ -295,9 +305,31 @@ class DJ(commands.Cog):
 
 
 
+# -------------------------------------------------------------------------------------------- # 
+# --------------------------------------- DB RELATED ----------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
-    # --------------------------------------- DB RELATED ----------------------------------------- # 
-    # -------------------------------------------------------------------------------------------- # 
+
+    
+    # COMMAND: notDJable
+    @commands.command()
+    async def notDJable(self, ctx, *args):
+        '''Turn a song off from DJ mode'''
+        vid = await self.process_song_input(ctx, args)
+
+        self.djdb.set_djable(vid, False)
+        await self.notify(ctx, f"{vid_to_url(vid)} is no longer DJable")
+
+    # COMMAND: DJable
+    @commands.command()
+    async def DJable(self, ctx, *args):
+        '''Allow a song to play in DJ mode'''
+        vid = await self.process_song_input(ctx, args)
+
+        self.djdb.set_djable(vid, True)
+        await self.notify(ctx, f"{vid_to_url(vid)} is now DJable")
+
+
+    
     # COMMAND: bind
     @commands.command()
     async def bind(self, ctx, *args):
@@ -329,16 +361,16 @@ class DJ(commands.Cog):
             # db: add binding
             add_binding(q, vid)
 
-            out_message = f"Added binding \n{q} -> https://youtu.be/{vid}"
+            out_message = f"Added binding \n{q} -> {vid_to_url(vid)}"
         except: 
             # case 2: No url provided, find binded url for the [query terms]
             vid = None
             q = " ".join(args)
 
             # query binding if url not provided
-            vID = self.djdb.find_query_match(q)
-            if vID:
-                out_message = f"{q} is bind to https://youtu.be/{vID}"
+            vid = self.djdb.find_query_match(q)
+            if vid:
+                out_message = f"{q} is bind to {vid_to_url(vid)}"
             else: 
                 out_message = f"{q} is not bind to anything"
 
@@ -393,8 +425,8 @@ class DJ(commands.Cog):
         pass
 
 
-    # ------------------------------------------------------------------------------------------------- # 
-    # ------------------------------------- EVENT/ERROR HANDLING --------------------------------------- # 
+# ------------------------------------------------------------------------------------------------- # 
+# ------------------------------------- EVENT/ERROR HANDLING --------------------------------------- # 
     # ------------------------------------------------------------------------------------------------- # 
     @commands.Cog.listener()		
     async def on_ready(self, ):
@@ -431,7 +463,7 @@ class DJ(commands.Cog):
     # --------- ACTION HANDLERS --------- # 
     # repeat button handler
     async def repeat_btn_handler(self, ctx, vid):
-        url = "youtu.be/" + vid
+        url = vid_to_url(vid)
         await self.play(ctx, url)
     # reDJ button handler
     async def reDJ_btn_handler(self, ctx, _):
@@ -456,6 +488,8 @@ class DJ(commands.Cog):
             # log to files
             error_log_e(e)
 
+
+# -------------------------------------------- MAIN ------------------------------------------------ # 
 if __name__ == "__main__":
     # set ffmpeg error log file
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'

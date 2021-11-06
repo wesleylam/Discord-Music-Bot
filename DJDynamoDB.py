@@ -187,7 +187,12 @@ class DJDB():
         new_djable = not old_djable
 
         # update
-        self.db_update(vID, DJDB.Attr.DJable, new_djable)
+        self.set_djable(vID, new_djable)
+
+    def set_djable(self, vID, djable = True):
+        # update
+        self.db_update(vID, DJDB.Attr.DJable, djable)
+
 
     # update duration info
     def update_duration(self, vID, duration):

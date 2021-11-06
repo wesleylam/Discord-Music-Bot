@@ -41,6 +41,13 @@ def get_channel_to_join(ctx):
             return c
 
     return max_member_c if max_member_c else vcs[0]
+
+
+# ----------------------------------------- PARSING INPUT ----------------------------------------------- # 
+
+def is_ytlink(link):
+    '''determine if input is a youtube link'''
+    return ("youtu.be" in link or "youtube.com" in link)
     
 
 def yturl_to_vid(url):
@@ -55,6 +62,9 @@ def yturl_to_vid(url):
         vid = url.split("/")[-1]
         return vid
     else: raise Exception("Not youtube link")
+
+def vid_to_url(vid):
+    return f"https://youtu.be/{vid}"
 
 
 def get_time():
