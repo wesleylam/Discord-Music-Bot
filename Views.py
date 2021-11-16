@@ -1,5 +1,5 @@
 import discord
-from discord_components import Button, ButtonStyle
+from discord_components import Button, ButtonStyle, component
 from helper import *
 from enum import Enum
 import random
@@ -64,7 +64,8 @@ class Views():
     def get_playing_string(self, is_dj_source, source, start_time):
         dj_string = "**DJ** " if is_dj_source else ""
         current_duration = readable_duration(time.time() - start_time)
-        self.playing_string = f"{dj_string}Now Playing: {source.title} \n{current_duration}/{readable_duration(source.duration)} - {source.url}"
+        full_duration = readable_duration(source.duration) if source.duration > 0 else "Unknown"
+        self.playing_string = f"{dj_string}Now Playing: {source.title} \n{current_duration}/{full_duration} - {source.url}"
         return self.playing_string
 
     def update_duration(self, original_str):
@@ -94,9 +95,12 @@ class Views():
         
         if update == ViewUpdateType.REPOST:
             # repost
-            m = self.playbox.copy()
+            m = await self.mChannel.send(
+                self.playbox.content,
+                components = self.playbox.components
+            )
             await self.playbox.delete()
-            await self.mChannel.send(m)
+            self.playbox = m
         elif update == ViewUpdateType.EDIT:
             # edit
             await self.playbox.edit(

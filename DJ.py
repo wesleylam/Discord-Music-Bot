@@ -500,7 +500,7 @@ class DJ(commands.Cog):
     # --------- ACTION HANDLERS --------- # 
     # repeat button handler
     async def repeat_btn_handler(self, ctx, p):
-        vid = p[0]
+        vid = "_".join(p)
         url = vid_to_url(vid)
         await self.play(ctx, url)
     # reDJ button handler
