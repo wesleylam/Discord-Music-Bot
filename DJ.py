@@ -230,6 +230,7 @@ class DJ(commands.Cog):
         source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data)
         source.url = url
         source.vid = vid
+        source.duration = self.djdb.find_duration(vid)
 
         # check valid song
         banned_reason = is_banned(source.title)

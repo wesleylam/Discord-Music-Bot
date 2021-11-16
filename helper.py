@@ -85,6 +85,14 @@ def readable_time(sec):
     if sec > 1: s += "s"
     return s
 
+def readable_duration(sec):
+    min = int(sec / 60)
+    sec = int(sec % 60)
+    s = f"{min}:"
+    if sec < 10: s += "0"
+    s += f"{sec}"
+    return s
+
 
 # ----------------------------------------- ERROR LOGGING -------------------------------------------- # 
 

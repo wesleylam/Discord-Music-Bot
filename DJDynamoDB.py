@@ -236,6 +236,12 @@ class DJDB():
             error_log("cannot find djable: " + e.message)
             return False
 
+    def find_duration(self, vID) -> bool:
+        try: 
+            return self.db_get(vID, [DJDB.Attr.Duration])[DJDB.Attr.Duration]
+        except DJDBException as e:
+            return False
+
     # query random song
     def find_rand_song(self, dj = True):
 

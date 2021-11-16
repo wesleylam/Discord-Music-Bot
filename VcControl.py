@@ -55,11 +55,10 @@ class VcControl():
     # ---------------------------- CONTROLS --------------------------- # 
     async def add(self, vc: discord.VoiceClient = None, source = None):
         print(source.title, source.vid, source.url)
-        t = time.time()
-        # send queue message
-        await self.views.add_queue_item(vc, source, t)
-        # append source to playlist
-        self.playlist.append( (source, t) ) 
+        # append source/queue_item to playlist
+        queue_message = await self.views.send_queue_message(vc, source)
+        self.playlist.append( (source, queue_message) ) 
+        
         if not vc.is_playing(): 
             await self.next()
 
@@ -110,13 +109,13 @@ class VcControl():
                     await self.mChannel.send(e.message)
                     self.djObj.djdb.remove_song(vid)
                     continue
-                dj_source = True
+                is_dj_source = True
             else:
                 # get the song from the first of the queue
-                source, t_check = self.playlist.pop(0)
+                (source, queue_message) = self.playlist.pop(0)
                 # delete the corresponding queuing message
-                await self.views.del_queue_item(t_check)
-                dj_source = False
+                await queue_message.delete()
+                is_dj_source = False
 
             vid = source.vid
             self.nowPlaying = source
@@ -125,11 +124,12 @@ class VcControl():
             vc.play(source, after = lambda e: after_handler(e, self.set_stream_error) )
             
             # show playing views for controls
-            await self.views.show_playing(dj_source, source)
+            await self.views.show_playing(is_dj_source, source, start_time = start)
 
             # wait until the current track ends
             while vc.is_playing(): 
                 await asyncio.sleep(1)
+                await self.views.update_playing(ViewUpdateType.DURATION)
 
             # end timer and add/update duration
             end = time.time()
@@ -171,10 +171,10 @@ class VcControl():
             # if not silent: await self.notify("Removed: " + self.nowPlaying.title)
             return self.nowPlaying.url
 
-        for i, (s, m) in enumerate(self.playlist): 
+        for i, (s, queue_message) in enumerate(self.playlist): 
             if match(key, s):
                 # delete playlist entry and the queue message
-                await m.delete()
+                await queue_message.delete()
                 del self.playlist[i]
 
                 if not silent: await self.notify(f"Removed by {author}: {s.title}")

@@ -3,12 +3,17 @@ from discord_components import Button, ButtonStyle
 from helper import *
 from enum import Enum
 import random
+import time
 
 class ViewUpdateType(Enum):
     REPOST = 1
     EDIT = 2
+    DURATION = 3
 
 class Views():
+
+    # -------------------------------- VIEWS ---------------------------------- # 
+
     def __init__(self, mChannel, vc, vcControl, guild_id) -> None:
         self.mChannel = mChannel # message channel
         self.nowPlaying = None
@@ -42,13 +47,44 @@ class Views():
         return f"{self.guild_id}_{linked_stringed_args}"
 
 
+    # -------------------------------- QUEUE VIEW ---------------------------------- # 
+
+    async def send_queue_message(self, vc, source):
+        vid = source.vid
+        self.queue_message = await self.mChannel.send(
+            "Queued: " + source.title,
+            components=[[
+                self.remove_button(vc, vid, label = "Remove"),
+                self.switch_djable_button(vc, vid, queue = True)
+            ]]
+        )
+        return self.queue_message
+
     # -------------------------------- NOWPLAYING VIEW ---------------------------------- # 
+    def get_playing_string(self, is_dj_source, source, start_time):
+        dj_string = "**DJ** " if is_dj_source else ""
+        current_duration = readable_duration(time.time() - start_time)
+        self.playing_string = f"{dj_string}Now Playing: {source.title} \n{current_duration}/{readable_duration(source.duration)} - {source.url}"
+        return self.playing_string
+
+    def update_duration(self, original_str):
+        if self.start_time is not None:
+            current_duration = time.time() - self.start_time
+            lines = original_str.split("\n")
+            duration_url = lines[1].split(" - ")
+            current_full_duration = duration_url[0].split("/")
+            return f"{lines[0]}\n{readable_duration(current_duration)}/{current_full_duration[1]} - {' - '.join(duration_url[1:])}"
+        else:
+            error_log(f"Cannot update duration without start time, return original: {original_str}")
+            return original_str
+
 
     # send message on text channel with action buttons
-    async def show_playing(self, dj_source, source, extended = False):
-        dj_string = "**[DJ]** " if dj_source else ""
+    async def show_playing(self, is_dj_source, source, start_time = None, extended = False):
+        if start_time: self.start_time = start_time
+
         self.playbox = await self.mChannel.send(
-            f"{dj_string}Now Playing: {source.title} \n{source.url}",
+            self.get_playing_string(is_dj_source, source, self.start_time),
             components = self.playbox_components(extended = extended)
         )
 
@@ -66,6 +102,12 @@ class Views():
             await self.playbox.edit(
                 components = self.playbox_components(extended = extended)
             )
+        elif update == ViewUpdateType.DURATION:
+            # edit duration
+            await self.playbox.edit(
+                self.update_duration(self.playbox.content),
+            )
+
         else: raise Exception(f"Unknown udpate type: {update}")
 
     def playbox_components(self, extended = False):
@@ -102,27 +144,6 @@ class Views():
         )
         self.playbox = None
 
-
-    # -------------------------------- QUEUE ITEM VIEW ---------------------------------- # 
-
-    async def add_queue_item(self, vc, source, t):
-        '''Add a queue message'''
-        vid = source.vid
-        m = await self.mChannel.send(
-            "Queued: " + source.title,
-            components=[[
-                self.remove_button(vc, source.vid, label = "Remove"),
-                self.switch_djable_button(vc, vid, queue = True)
-            ]]
-        )
-        self.queue_items.append( (m, t) )
-
-    async def del_queue_item(self, t_check):
-        '''Delete the earliest queue message'''
-        (m, t) = self.queue_items.pop()
-        # verify info (time as check)
-        assert t == t_check
-        await m.delete()
 
     # -------------------------------- PLAYLIST VIEW ---------------------------------- # 
 
