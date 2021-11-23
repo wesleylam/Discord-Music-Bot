@@ -159,7 +159,7 @@ class DJDB():
 
 
     # insert one song
-    def insert_song(self, songInfo, qcount = 1, songVol = default_init_vol):
+    def insert_song(self, songInfo, qcount = 0, songVol = default_init_vol, newDJable = True):
         song = self.find_song_match(songInfo.vID)
         if song:
             # skip if song exist
@@ -170,7 +170,7 @@ class DJDB():
         item = songInfo.dictify_info()    
         item[DJDB.Attr.STitle] = item[DJDB.Attr.Title].lower()
         item[DJDB.Attr.Queries] = []
-        item[DJDB.Attr.DJable] = True
+        item[DJDB.Attr.DJable] = newDJable
         item[DJDB.Attr.SongVol] = int(songVol * 100) # as percentage (need int)
         item[DJDB.Attr.Duration] = 0
         item[DJDB.Attr.Qcount] = qcount

@@ -108,39 +108,46 @@ class DJ(commands.Cog):
     @commands.command(aliases=['m'])
     async def meme(self, ctx, *kwords):
         '''Play a meme instantly (with high volume)'''
-        await self.play(ctx, *kwords, loud = True)
+        await self.play(ctx, *kwords, loud = True, newDJable = False)
         await self.skip(ctx)
 
     # COMMAND: rape
     @commands.command(aliases=['earrape', 'r'])
     async def rape(self, ctx, *kwords):
         '''Play a song in earrape mode (with high volume and baseboosted)'''
-        await self.play(ctx, *kwords, loud = True, baseboost = True)
+        await self.play(ctx, *kwords, loud = True, baseboost = True, newDJable = False)
 
     # COMMAND: rapenow
     @commands.command(aliases=['earrapenow', 'rnow', 'rn'])
     async def rapenow(self, ctx, *kwords):
         '''Play a song in earrape mode instantly (with high volume and baseboosted)'''
-        await self.play(ctx, *kwords, loud = True, baseboost = True)
+        await self.play(ctx, *kwords, loud = True, baseboost = True, newDJable = False)
         await self.skip(ctx)
 
     # COMMAND: insert
     @commands.command(aliases=['ptop', 'play top'])
     async def insert(self, ctx, *kwords):
         '''Play a song next (top of the queue)'''
-        await self.play(ctx, *kwords, insert = True)
+        await self.play(ctx, *kwords, insert = True)    
+        
+    # COMMAND: playonce
+    @commands.command(aliases=['p1', 'pone', 'play1', 'ponce'])
+    async def playonce(self, ctx, *kwords):
+        '''Play a song with default not-DJable (only apply with its new song)'''
+        await self.play(ctx, *kwords, insert = True, newDJable = False)
 
     # ----------------------------- BASE PLAY COMMAND  ------------------------------ # 
     # COMMAND: play
     @commands.command(aliases=['p'])
-    async def play(self, ctx, *kwords, insert = False, loud = False, baseboost = False):
+    async def play(self, ctx, *kwords, insert = False, loud = False, baseboost = False, newDJable = True):
         '''Play a song (search in youtube / youtube link)'''
-        vid = await self.process_song_input(ctx, kwords)
+        vid = await self.process_song_input(ctx, kwords, newDJable = newDJable)
 
         # 2 & 3
         await self.compile_and_play(ctx, vid, insert = insert, loud = loud, baseboost = baseboost)
 
-    async def process_song_input(self, ctx, args, DBonly = False):
+
+    async def process_song_input(self, ctx, args, DBonly = False, newDJable = True):
         '''
         Process song input (from link or search terms)
         return vid
@@ -159,10 +166,10 @@ class DJ(commands.Cog):
             vid = yturl_to_vid(url)
             # insert to db if not in db
             if not DBonly and not self.djdb.find_song_match(vid):
-                self.yt_search_and_insert(vid, use_vID = True)
+                self.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
         else: 
             # case 2: find in query db (or query yt if none)
-            vid = await self.scp_search(ctx, args, DBonly = DBonly)
+            vid = await self.scp_search(ctx, args, DBonly = DBonly, newDJable = newDJable)
 
         return vid
         
@@ -185,7 +192,7 @@ class DJ(commands.Cog):
         vid = None
         return vid
 
-    async def scp_search(self, ctx, s, DBonly = False):
+    async def scp_search(self, ctx, s, DBonly = False, newDJable = True):
         '''scp step 1: search (in db or youtube)'''
         # search for url in youtube API
         search_term = (" ".join(s)).lower()
@@ -199,18 +206,18 @@ class DJ(commands.Cog):
             if not self.djdb.find_song_match(vid):
                 error_log(f"(Unexpected behaviour) Query found but song not in DB: {search_term} -> {vid}")
                 await self.notify(ctx, "Unexpected behaviour: see log", del_sec = None)
-                self.yt_search_and_insert(vid, use_vID = True)
+                self.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
         else:
             if DBonly: raise DJDBException(f"No item found for {search_term}")
 
             # get info by searching youtube API
-            info = self.yt_search_and_insert(search_term, insert_after = False)
+            info = self.yt_search_and_insert(search_term, insert_after = False, newDJable = newDJable)
             vid = info.vID
             # add query to db
             self.djdb.add_query(search_term, info)
         return vid
     
-    def yt_search_and_insert(self, search_term, use_vID = False, insert_after = True):
+    def yt_search_and_insert(self, search_term, use_vID = False, insert_after = True, newDJable = True):
         '''
         [ Helper function for scp_search ]
         youtube search and insert to db
@@ -223,7 +230,7 @@ class DJ(commands.Cog):
             if use_vID: raise Exception(f"No video found: {vid_to_url(search_term)}")
             else: raise Exception(f"Nothing found in video form: {search_term}")
 
-        if insert_after: self.djdb.insert_song(info)
+        if insert_after: self.djdb.insert_song(info, newDJable = newDJable)
         return info
 
 
