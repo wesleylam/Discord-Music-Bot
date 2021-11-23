@@ -70,7 +70,7 @@ class DJ(commands.Cog):
         else: 
             await self.vcControls[ctx.guild.id].disconnectVC()
             
-    # -------------------- play from youtube url / default if no url -------------------- # 
+    # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
     @commands.command()
     async def dj(self, ctx, type = True):
@@ -107,29 +107,38 @@ class DJ(commands.Cog):
     # COMMAND: meme
     @commands.command(aliases=['m'])
     async def meme(self, ctx, *kwords):
-        '''Play a meme (with high volume)'''
-        vid = await self.process_song_input(ctx, kwords)
-
-        # 2 & 3
-        await self.compile_and_play(ctx, vid, loud = True)
+        '''Play a meme instantly (with high volume)'''
+        await self.play(ctx, *kwords, loud = True)
+        await self.skip(ctx)
 
     # COMMAND: rape
-    @commands.command(aliases=['earrape'])
+    @commands.command(aliases=['earrape', 'r'])
     async def rape(self, ctx, *kwords):
         '''Play a song in earrape mode (with high volume and baseboosted)'''
-        vid = await self.process_song_input(ctx, kwords)
+        await self.play(ctx, *kwords, loud = True, baseboost = True)
 
-        # 2 & 3
-        await self.compile_and_play(ctx, vid, loud = True, baseboost = True)
+    # COMMAND: rapenow
+    @commands.command(aliases=['earrapenow', 'rnow', 'rn'])
+    async def rapenow(self, ctx, *kwords):
+        '''Play a song in earrape mode instantly (with high volume and baseboosted)'''
+        await self.play(ctx, *kwords, loud = True, baseboost = True)
+        await self.skip(ctx)
 
+    # COMMAND: insert
+    @commands.command(aliases=['ptop', 'play top'])
+    async def insert(self, ctx, *kwords):
+        '''Play a song next (top of the queue)'''
+        await self.play(ctx, *kwords, insert = True)
+
+    # ----------------------------- BASE PLAY COMMAND  ------------------------------ # 
     # COMMAND: play
     @commands.command(aliases=['p'])
-    async def play(self, ctx, *kwords):
+    async def play(self, ctx, *kwords, insert = False, loud = False, baseboost = False):
         '''Play a song (search in youtube / youtube link)'''
         vid = await self.process_song_input(ctx, kwords)
 
         # 2 & 3
-        await self.compile_and_play(ctx, vid)
+        await self.compile_and_play(ctx, vid, insert = insert, loud = loud, baseboost = baseboost)
 
     async def process_song_input(self, ctx, args, DBonly = False):
         '''
@@ -159,7 +168,7 @@ class DJ(commands.Cog):
         
 
 
-    async def compile_and_play(self, ctx, vid, loud = False, baseboost = False):
+    async def compile_and_play(self, ctx, vid, insert = False, loud = False, baseboost = False):
         '''Step 2 & 3'''
         # DB: INC Qcount
         self.djdb.increment_qcount(vid)
@@ -167,7 +176,7 @@ class DJ(commands.Cog):
         # 2. compile
         source = await self.scp_compile(vid, loud = loud, baseboost = baseboost)
         # 3. play
-        await self.scp_play(ctx, source)
+        await self.scp_play(ctx, source, insert = insert)
 
 # ---------------------------- SEARCH COMPILE PLAY --------------------------------- #     
 
@@ -246,7 +255,7 @@ class DJ(commands.Cog):
             ffmpeg_final_options[os] = ffmpeg_final_options[os] + " -af bass=g=50"
         else:
             ffmpeg_final_options = ffmpeg_options.copy()
-        vol = default_init_vol if loud else default_init_vol * 5
+        vol = default_init_vol * 10 if loud else default_init_vol
         source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data, volume = vol)
         source.url = url
         source.vid = vid
@@ -259,7 +268,7 @@ class DJ(commands.Cog):
         else:
             return source
 
-    async def scp_play(self, ctx, source):
+    async def scp_play(self, ctx, source, insert = False):
         '''
         scp step 3: play in voice client
         send source to playlist and play in vc
@@ -268,7 +277,7 @@ class DJ(commands.Cog):
         if vc is None:
             await self.join(ctx)
             vc = ctx.voice_client
-        await self.vcControls[ctx.guild.id].add(vc, source)
+        await self.vcControls[ctx.guild.id].add(vc, source, insert = insert)
 
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
@@ -340,9 +349,13 @@ class DJ(commands.Cog):
     @commands.command(aliases=['info', 'si'])
     async def songinfo(self, ctx, *args):
         '''Get song info of a song (DB entry)'''
-        vid = await self.process_song_input(ctx, args, DBonly = True)
+        try: 
+          vid = await self.process_song_input(ctx, args, DBonly = True)
+          item = self.djdb.db_get(vid)
+        except DJDBException as e: 
+          await self.notify(ctx, f"No record of {' '.join(args)}")
+          return
 
-        item = self.djdb.db_get(vid)
         Title = item[DJDB.Attr.Title]
         url = vid_to_url(item[DJDB.Attr.vID])
         DJable = "**[DJable]**" if item[DJDB.Attr.DJable] else ""

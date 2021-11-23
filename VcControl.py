@@ -53,11 +53,14 @@ class VcControl():
             await m.delete(delay = del_sec)
 
     # ---------------------------- CONTROLS --------------------------- # 
-    async def add(self, vc: discord.VoiceClient = None, source = None):
+    async def add(self, vc: discord.VoiceClient = None, source = None, insert = False):
         print(source.title, source.vid, source.url)
         # append source/queue_item to playlist
         queue_message = await self.views.send_queue_message(vc, source)
-        self.playlist.append( (source, queue_message) ) 
+        if insert:
+          self.playlist.insert(0, (source, queue_message) ) 
+        else:
+          self.playlist.append( (source, queue_message) ) 
         
         if not vc.is_playing(): 
             await self.next()
@@ -211,10 +214,6 @@ class VcControl():
             await self.clear(silent = True)
             self.skip_author = "Leaving"
             self.vc.stop()
-           
-    def insert(self, source):
-        pass
-
 
     # -------------------- DISCONNECT ------------------- # 
     async def disconnectVC(self):
