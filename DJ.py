@@ -130,7 +130,7 @@ class DJ(commands.Cog):
             # case 1: url
             vid = yturl_to_vid(url)
             # insert to db if not in db
-            if not self.djdb.find_song_match(vid):
+            if not DBonly and not self.djdb.find_song_match(vid):
                 self.yt_search_and_insert(vid, use_vID = True)
         else: 
             # case 2: find in query db (or query yt if none)
