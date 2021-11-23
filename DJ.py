@@ -1,5 +1,6 @@
 import os
 import discord
+from discord.channel import VocalGuildChannel
 from discord.ext import commands
 from discord_components import ComponentsBot
 from DJDBException import DJDBException
@@ -13,7 +14,7 @@ from youtube_dl.utils import DownloadError
 
 from helper import *
 from config import *
-from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log
+from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log, default_init_vol
 from DJDynamoDB import DJDB
 from DJBannedException import DJBannedException
 from YTDLException import YTDLException
@@ -103,6 +104,24 @@ class DJ(commands.Cog):
         await self.compile_and_play(ctx, vid)
 
 
+    # COMMAND: meme
+    @commands.command(aliases=['m'])
+    async def meme(self, ctx, *kwords):
+        '''Play a meme (with high volume)'''
+        vid = await self.process_song_input(ctx, kwords)
+
+        # 2 & 3
+        await self.compile_and_play(ctx, vid, loud = True)
+
+    # COMMAND: rape
+    @commands.command(aliases=['earrape'])
+    async def rape(self, ctx, *kwords):
+        '''Play a song in earrape mode (with high volume and baseboosted)'''
+        vid = await self.process_song_input(ctx, kwords)
+
+        # 2 & 3
+        await self.compile_and_play(ctx, vid, loud = True, baseboost = True)
+
     # COMMAND: play
     @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords):
@@ -140,13 +159,13 @@ class DJ(commands.Cog):
         
 
 
-    async def compile_and_play(self, ctx, vid):
+    async def compile_and_play(self, ctx, vid, loud = False, baseboost = False):
         '''Step 2 & 3'''
         # DB: INC Qcount
         self.djdb.increment_qcount(vid)
 
         # 2. compile
-        source = await self.scp_compile(vid)
+        source = await self.scp_compile(vid, loud = loud, baseboost = baseboost)
         # 3. play
         await self.scp_play(ctx, source)
 
@@ -199,7 +218,7 @@ class DJ(commands.Cog):
         return info
 
 
-    async def scp_compile(self, vid, stream = True):
+    async def scp_compile(self, vid, stream = True, loud = False, baseboost = False):
         '''
         scp step 2: compile youtube source
         compile YTDLSource (audio source object) from youtube url
@@ -221,13 +240,14 @@ class DJ(commands.Cog):
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         # options for baseboosted or normal
-        if need_baseboost(data.get('title')):
+        if baseboost or need_baseboost(data.get('title')):
             ffmpeg_final_options = ffmpeg_options.copy()
             os = "options"
             ffmpeg_final_options[os] = ffmpeg_final_options[os] + " -af bass=g=50"
         else:
             ffmpeg_final_options = ffmpeg_options.copy()
-        source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data)
+        vol = default_init_vol if loud else default_init_vol * 5
+        source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data, volume = vol)
         source.url = url
         source.vid = vid
         source.duration = self.djdb.find_duration(vid)
