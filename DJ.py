@@ -134,7 +134,7 @@ class DJ(commands.Cog):
     @commands.command(aliases=['p1', 'pone', 'play1', 'ponce'])
     async def playonce(self, ctx, *kwords):
         '''Play a song with default not-DJable (only apply with its new song)'''
-        await self.play(ctx, *kwords, insert = True, newDJable = False)
+        await self.play(ctx, *kwords, newDJable = False)
 
     # ----------------------------- BASE PLAY COMMAND  ------------------------------ # 
     # COMMAND: play
