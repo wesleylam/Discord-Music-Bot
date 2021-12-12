@@ -169,7 +169,8 @@ class DJ(commands.Cog):
             if not DBonly and not match:
                 self.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
                 vol = None
-            vol = match[DJDB.Attr.SongVol]
+            else: 
+                vol = match[DJDB.Attr.SongVol]
         else: 
             # case 2: find in query db (or query yt if none)
             vid, vol = await self.scp_search(ctx, args, DBonly = DBonly, newDJable = newDJable)
@@ -388,7 +389,7 @@ class DJ(commands.Cog):
         embedInfo = discord.Embed(title=Title, description=url + " " + DJable, color=0x00ff00)
         embedInfo.add_field(name="Queue count", value=Qcount, inline=True)
         embedInfo.add_field(name="Duration", value=readable_time(Duration), inline=True)
-        embedInfo.add_field(name="Song Volume", value=f"{SongVol} (default: {default_init_vol * 100})", inline=True)
+        embedInfo.add_field(name="Song Volume", value=f"{SongVol} (default: {default_init_vol  * 100})", inline=True)
         if Queries != "": 
             embedInfo.add_field(name="Queries", value=Queries, inline=False)
 
@@ -517,16 +518,24 @@ class DJ(commands.Cog):
     @commands.command()
     async def songvup(self, ctx, vid, n = 2, *args):
         '''Permanently increase a song volume'''
-        await self.songvset(ctx, vid, n)
+        await self.songvMulti(ctx, vid, n)
 
     # COMMAND: songvdown
     @commands.command()
     async def songvdown(self, ctx, vid, n = 0.5, *args):
         '''Permanently reduce a song volume'''
-        await self.songvset(ctx, vid, n)
+        await self.songvMulti(ctx, vid, n)
+
+    # COMMAND: songvset
+    @commands.command()
+    async def songvset(self, ctx, vid, n = 10, *args):
+        '''Permanently set a song volume'''
+        n = int(n)
+        self.djdb.change_vol(vid, multiplier = None, setNewVol = n)
+        await self.notify(ctx, f"Song Volume set to {n}")
 
 
-    async def songvset(self, ctx, vid, n, noCtx = None):
+    async def songvMulti(self, ctx, vid, n, noCtx = None):
         if noCtx:
             vc = noCtx["vc"]
             channel = noCtx["channel"]
@@ -538,6 +547,7 @@ class DJ(commands.Cog):
         self.djdb.change_vol(vid, multiplier = n)
         await self.vset(vc, channel, volume = n, slient = True)
         await self.notify(channel, f"Song Volume multiplied by {n}")
+        return f"Song Volume multiplied by {n}"
 
 
     # COMMAND: tag

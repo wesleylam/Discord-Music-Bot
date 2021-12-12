@@ -45,7 +45,10 @@ class DJDB():
             response = self.table.get_item( Key={ 'vID': vID } )
 
         try:
-            return response['Item']
+            item = response['Item']
+            if DJDB.Attr.SongVol in item:
+                item[DJDB.Attr.SongVol] = item[DJDB.Attr.SongVol] / 100 # Scale down from percentage
+            return item
         except KeyError as e:
             raise DJDBException(f"No item for vID: {vID}")
             
@@ -219,16 +222,19 @@ class DJDB():
             ExpressionAttributeValues = { ':val': 1 }
         )
 
-    def change_vol(self, vID, multiplier):
-        original_vol = self.db_get(vID, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
-        new_vol = int(float(original_vol) * multiplier)
+    def change_vol(self, vID, multiplier, setNewVol = None):
+        if setNewVol is None:
+            original_vol = self.db_get(vID, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
+            new_vol_percentage = int(float(original_vol * 100) * multiplier)
+        else:
+            new_vol_percentage = setNewVol
         # update
         self.table.update_item(
             Key = { 'vID': vID },
             UpdateExpression = f'SET {DJDB.Attr.SongVol} = :val',
-            ExpressionAttributeValues = { ':val': new_vol }
+            ExpressionAttributeValues = { ':val': new_vol_percentage }
         )
-        return new_vol
+        return new_vol_percentage
 
     def add_tag(self, vid, tag):
         pass

@@ -237,12 +237,12 @@ class Views():
     def song_vol_up_button(self, vid):
         return self.djbot_component_manager.add_callback(
             Button(style=ButtonStyle.gray, label="Song volume up", id=self.BIgen("pvup", vid)), 
-            lambda i: self.song_vol_up_callback(vid)
+            lambda i: self.song_vol_up_callback(i, vid)
         )
     def song_vol_down_button(self, vid):
         return self.djbot_component_manager.add_callback(
             Button(style=ButtonStyle.gray, label="Song volume down", id=self.BIgen("pvdown", vid)), 
-            lambda i: self.song_vol_down_callback(vid)
+            lambda i: self.song_vol_down_callback(i, vid)
         )
 
     # --------------------- BUTTONS CALLBACK -------------------- # 
@@ -280,14 +280,16 @@ class Views():
                 ]]
             )
 
-    async def song_vol_up_callback(self, vid):
-        await self.vcControl.djObj.songvset(None, vid, 2, {
+    async def song_vol_up_callback(self, interaction, vid):
+        m = await self.vcControl.djObj.songvMulti(None, vid, 2, {
             "vc": self.vc,
             "channel": self.mChannel
         })
+        await interaction.send(m)
     
-    async def song_vol_down_callback(self, vid):
-        await self.vcControl.djObj.songvset(None, vid, 0.5, {
+    async def song_vol_down_callback(self, interaction, vid):
+        m = await self.vcControl.djObj.songvMulti(None, vid, 0.5, {
             "vc": self.vc,
             "channel": self.mChannel
         })
+        await interaction.send(m)
