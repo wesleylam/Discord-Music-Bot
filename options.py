@@ -23,8 +23,9 @@ ffmpeg_error_log = "./ffreport.log"
 
 default_error_log = "./error_log.log"
 
-# default volume
+# volumes
 default_init_vol = 0.1
+loud_vol_factor = 5
 
 # banned keyword list and reasons
 banned_list = []

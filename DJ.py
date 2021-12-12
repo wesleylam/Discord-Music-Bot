@@ -14,7 +14,7 @@ from youtube_dl.utils import DownloadError
 
 from helper import *
 from config import *
-from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log, default_init_vol
+from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log, default_init_vol, loud_vol_factor
 from DJDynamoDB import DJDB
 from DJBannedException import DJBannedException
 from YTDLException import YTDLException
@@ -108,7 +108,7 @@ class DJ(commands.Cog):
     @commands.command(aliases=['m'])
     async def meme(self, ctx, *kwords):
         '''Play a meme instantly (with high volume)'''
-        await self.play(ctx, *kwords, loud = True, newDJable = False)
+        await self.play(ctx, *kwords, insert = True, loud = True, newDJable = False)
         await self.skip(ctx)
 
     # COMMAND: rape
@@ -121,7 +121,7 @@ class DJ(commands.Cog):
     @commands.command(aliases=['earrapenow', 'rnow', 'rn'])
     async def rapenow(self, ctx, *kwords):
         '''Play a song in earrape mode instantly (with high volume and baseboosted)'''
-        await self.play(ctx, *kwords, loud = True, baseboost = True, newDJable = False)
+        await self.play(ctx, *kwords, insert = True, loud = True, baseboost = True, newDJable = False)
         await self.skip(ctx)
 
     # COMMAND: insert
@@ -262,7 +262,7 @@ class DJ(commands.Cog):
             ffmpeg_final_options[os] = ffmpeg_final_options[os] + " -af bass=g=50"
         else:
             ffmpeg_final_options = ffmpeg_options.copy()
-        vol = default_init_vol * 10 if loud else default_init_vol
+        vol = default_init_vol * loud_vol_factor if loud else default_init_vol
         source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data, volume = vol)
         source.url = url
         source.vid = vid
