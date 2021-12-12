@@ -388,7 +388,7 @@ class DJ(commands.Cog):
         embedInfo = discord.Embed(title=Title, description=url + " " + DJable, color=0x00ff00)
         embedInfo.add_field(name="Queue count", value=Qcount, inline=True)
         embedInfo.add_field(name="Duration", value=readable_time(Duration), inline=True)
-        embedInfo.add_field(name="Song Volume", value=f"{SongVol} (default: {default_init_vol})", inline=True)
+        embedInfo.add_field(name="Song Volume", value=f"{SongVol} (default: {default_init_vol * 100})", inline=True)
         if Queries != "": 
             embedInfo.add_field(name="Queries", value=Queries, inline=False)
 
