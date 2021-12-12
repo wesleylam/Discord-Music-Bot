@@ -271,7 +271,7 @@ class DJDB():
     def find_query_match(self, query):
         # scan all songs' queries
         response = self.table.scan(
-            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}'
+            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}, {DJDB.Attr.SongVol}'
         )
         items = response['Items'] # items: list of dict
 

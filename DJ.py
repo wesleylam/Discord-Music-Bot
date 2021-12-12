@@ -186,7 +186,9 @@ class DJ(commands.Cog):
             vol = default_init_vol
         if loud:
             vol = vol * loud_vol_factor
-        source = await self.scp_compile(vid, vol = vol, baseboost = baseboost)
+
+        print(vol)
+        source = await self.scp_compile(vid, vol, baseboost = baseboost)
         # 3. play
         await self.scp_play(ctx, source, insert = insert)
 
@@ -213,7 +215,7 @@ class DJ(commands.Cog):
                 error_log(f"(Unexpected behaviour) Query found but song not in DB: {search_term} -> {vid}")
                 await self.notify(ctx, "Unexpected behaviour: see log", del_sec = None)
                 self.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
-            vol = match[DJDB.Attr.SongVol]
+            vol = match[DJDB.Attr.SongVol] / 100 # scale down from percentage
         
         else: # no DB match entry  
             if DBonly: raise DJDBException(f"No item found for {search_term}")
