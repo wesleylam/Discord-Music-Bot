@@ -219,8 +219,16 @@ class DJDB():
             ExpressionAttributeValues = { ':val': 1 }
         )
 
-    def change_vol(self, vol):
-        pass
+    def change_vol(self, vID, multiplier):
+        original_vol = self.db_get(vID, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
+        new_vol = int(float(original_vol) * multiplier)
+        # update
+        self.table.update_item(
+            Key = { 'vID': vID },
+            UpdateExpression = f'SET {DJDB.Attr.SongVol} = :val',
+            ExpressionAttributeValues = { ':val': new_vol }
+        )
+        return new_vol
 
     def add_tag(self, vid, tag):
         pass

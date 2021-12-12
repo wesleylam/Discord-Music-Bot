@@ -165,9 +165,11 @@ class DJ(commands.Cog):
             # case 1: url
             vid = yturl_to_vid(url)
             # insert to db if not in db
-            if not DBonly and not self.djdb.find_song_match(vid):
+            match = self.djdb.find_song_match(vid)
+            if not DBonly and not match:
                 self.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
-            vol = None
+                vol = None
+            vol = match[DJDB.Attr.SongVol]
         else: 
             # case 2: find in query db (or query yt if none)
             vid, vol = await self.scp_search(ctx, args, DBonly = DBonly, newDJable = newDJable)
@@ -341,22 +343,22 @@ class DJ(commands.Cog):
     @commands.command()
     async def vup(self, ctx, n=2):
         '''Increase current volume'''
-        await self.vset(ctx, n)
+        await self.vset(ctx.voice_client, ctx, n)
 
     # COMMAND: vdown (half)
     @commands.command()
     async def vdown(self, ctx, n=0.5):
         '''Reduce current volume'''
-        await self.vset(ctx, n)
+        await self.vset(ctx.voice_client, ctx, n)
 
     # volume set
-    async def vset(self, ctx, volume):
-        vc = ctx.voice_client
+    async def vset(self, vc, channel, volume, slient = False):
         if not vc: raise Exception("I am not in any voice channel")
 
         vc.source = discord.PCMVolumeTransformer(vc.source)
         vc.source.volume = float(volume)
-        await self.notify(ctx, f"Volume multiply by {ctx.voice_client.source.volume}")
+        if not slient:
+            await self.notify(channel, f"Volume multiplied by {vc.source.volume}")
 
 
 
@@ -381,10 +383,12 @@ class DJ(commands.Cog):
         Duration = item[DJDB.Attr.Duration]
         Queries = "\n".join( [ f"{i+1}: " + " ".join([s for s in q]) for i, q in enumerate(item[DJDB.Attr.Queries]) ] )
         Qcount = item[DJDB.Attr.Qcount]
+        SongVol = item[DJDB.Attr.SongVol]
 
         embedInfo = discord.Embed(title=Title, description=url + " " + DJable, color=0x00ff00)
         embedInfo.add_field(name="Queue count", value=Qcount, inline=True)
         embedInfo.add_field(name="Duration", value=readable_time(Duration), inline=True)
+        embedInfo.add_field(name="Song Volume", value=f"{SongVol} (default: {default_init_vol})", inline=True)
         if Queries != "": 
             embedInfo.add_field(name="Queries", value=Queries, inline=False)
 
@@ -507,6 +511,33 @@ class DJ(commands.Cog):
             await self.notify(ctx, str, del_sec=None)
         else: 
             await self.notify(ctx, none_message)
+
+
+    # COMMAND: songvup
+    @commands.command()
+    async def songvup(self, ctx, vid, n = 2, *args):
+        '''Permanently increase a song volume'''
+        await self.songvset(ctx, vid, n)
+
+    # COMMAND: songvdown
+    @commands.command()
+    async def songvdown(self, ctx, vid, n = 0.5, *args):
+        '''Permanently reduce a song volume'''
+        await self.songvset(ctx, vid, n)
+
+
+    async def songvset(self, ctx, vid, n, noCtx = None):
+        if noCtx:
+            vc = noCtx["vc"]
+            channel = noCtx["channel"]
+        else: 
+            vc = ctx.voice_client
+            channel = ctx
+
+
+        self.djdb.change_vol(vid, multiplier = n)
+        await self.vset(vc, channel, volume = n, slient = True)
+        await self.notify(channel, f"Song Volume multiplied by {n}")
 
 
     # COMMAND: tag

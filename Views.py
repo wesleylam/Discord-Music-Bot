@@ -36,7 +36,7 @@ class Views():
         tokens = id.split("_")
         return tokens[0], tokens[1], tokens[2:]
 
-
+    # button identifier
     def BIgen(self, action, *args):
         '''
         Unique button identifier generation
@@ -124,9 +124,11 @@ class Views():
             self.song_info_button(vc, vid),
         ]
         song_info_btns = [   
+            # song perm vol up
+            self.song_vol_up_button(vid),
+            self.song_vol_down_button(vid),
             # extra song settings
             self.del_from_db_button(vc, vid),
-            # perm vol up
             # replace
         ]
         if extended:
@@ -232,6 +234,17 @@ class Views():
     def reDJ_button(self):
         return Button(style=ButtonStyle.blue, label="DJ again", id=self.BIgen("reDJ"))
 
+    def song_vol_up_button(self, vid):
+        return self.djbot_component_manager.add_callback(
+            Button(style=ButtonStyle.gray, label="Song volume up", id=self.BIgen("pvup", vid)), 
+            lambda i: self.song_vol_up_callback(vid)
+        )
+    def song_vol_down_button(self, vid):
+        return self.djbot_component_manager.add_callback(
+            Button(style=ButtonStyle.gray, label="Song volume down", id=self.BIgen("pvdown", vid)), 
+            lambda i: self.song_vol_down_callback(vid)
+        )
+
     # --------------------- BUTTONS CALLBACK -------------------- # 
     async def switch_dj_callback(self, interaction):
         await self.vcControl.set_dj_type(None if self.vcControl.dj else True)
@@ -266,3 +279,15 @@ class Views():
                     self.switch_djable_button(vc, vid, queue)
                 ]]
             )
+
+    async def song_vol_up_callback(self, vid):
+        await self.vcControl.djObj.songvset(None, vid, 2, {
+            "vc": self.vc,
+            "channel": self.mChannel
+        })
+    
+    async def song_vol_down_callback(self, vid):
+        await self.vcControl.djObj.songvset(None, vid, 0.5, {
+            "vc": self.vc,
+            "channel": self.mChannel
+        })
