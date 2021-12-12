@@ -292,8 +292,8 @@ class DJDB():
 
                     # match query
                     if q == query_words:
-                        vID = item[DJDB.Attr.vID]
-                        return vID
+                        # vID = item[DJDB.Attr.vID]
+                        return item
 
             # no match
             return None
