@@ -103,10 +103,10 @@ class VcControl():
             # activate dj when no song in queue
             if self.dj and len(self.playlist) <= 0: 
                 # query a random vid and compile source
-                vid = self.djObj.djdb.find_rand_song()
+                vid, vol = self.djObj.djdb.find_rand_song()
                 
                 # must catch exception here, otherwise the play loop will end when yt error occur
-                try: source = await self.djObj.scp_compile(vid)
+                try: source = await self.djObj.scp_compile(vid, vol)
                 # youtube download/extract error and banned song exception
                 except (YTDLException, DJBannedException) as e: 
                     await self.mChannel.send(e.message)

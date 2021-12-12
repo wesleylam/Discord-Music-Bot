@@ -249,14 +249,15 @@ class DJDB():
             response = self.table.scan(
                 # FilterExpression=Attr('Title').contains('back')
                 FilterExpression = Attr(DJDB.Attr.DJable).eq(True),
-                ProjectionExpression = DJDB.Attr.vID
+                ProjectionExpression = f'{DJDB.Attr.vID}, {DJDB.Attr.SongVol}'
             )
         else:
             response = self.table.scan(
-                ProjectionExpression = [DJDB.Attr.vID]
+                ProjectionExpression = f'{DJDB.Attr.vID}, {DJDB.Attr.SongVol}'
             )
         items = response['Items'] # items: list of dict
-        return random.choice(items)[DJDB.Attr.vID]
+        chosen = random.choice(items)
+        return chosen[DJDB.Attr.vID], chosen[DJDB.Attr.SongVol] / 100 # scale down from percentage
 
 
     # query song
@@ -292,7 +293,7 @@ class DJDB():
 
                     # match query
                     if q == query_words:
-                        # vID = item[DJDB.Attr.vID]
+                        item[DJDB.Attr.SongVol] = item[DJDB.Attr.SongVol] / 100 # Scale down from percentage
                         return item
 
             # no match

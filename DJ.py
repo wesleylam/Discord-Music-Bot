@@ -182,13 +182,7 @@ class DJ(commands.Cog):
         self.djdb.increment_qcount(vid)
 
         # 2. compile
-        if vol is None:
-            vol = default_init_vol
-        if loud:
-            vol = vol * loud_vol_factor
-
-        print(vol)
-        source = await self.scp_compile(vid, vol, baseboost = baseboost)
+        source = await self.scp_compile(vid, vol, loud = loud, baseboost = baseboost)
         # 3. play
         await self.scp_play(ctx, source, insert = insert)
 
@@ -215,7 +209,7 @@ class DJ(commands.Cog):
                 error_log(f"(Unexpected behaviour) Query found but song not in DB: {search_term} -> {vid}")
                 await self.notify(ctx, "Unexpected behaviour: see log", del_sec = None)
                 self.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
-            vol = match[DJDB.Attr.SongVol] / 100 # scale down from percentage
+            vol = match[DJDB.Attr.SongVol]
         
         else: # no DB match entry  
             if DBonly: raise DJDBException(f"No item found for {search_term}")
@@ -246,7 +240,7 @@ class DJ(commands.Cog):
         return info
 
 
-    async def scp_compile(self, vid, vol, stream = True, baseboost = False):
+    async def scp_compile(self, vid, vol, loud = False, stream = True, baseboost = False):
         '''
         scp step 2: compile youtube source
         compile YTDLSource (audio source object) from youtube url
@@ -274,6 +268,13 @@ class DJ(commands.Cog):
             ffmpeg_final_options[os] = ffmpeg_final_options[os] + " -af bass=g=50"
         else:
             ffmpeg_final_options = ffmpeg_options.copy()
+
+        # Create source object
+        if vol is None:
+            vol = default_init_vol
+        if loud:
+            vol = vol * loud_vol_factor
+        print(vol)
         source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data, volume = vol)
         source.url = url
         source.vid = vid
