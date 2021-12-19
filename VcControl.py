@@ -8,7 +8,7 @@ from helper import error_log_e, error_log
 import time
 
 class VcControl():
-    def __init__(self, mChannel, djo, vc, guild_id) -> None:
+    def __init__(self, mChannel, djo, vc, guild) -> None:
         self.mChannel = mChannel # message channel
         self.nowPlaying = None
         self.dj = None # dj type: string?
@@ -17,11 +17,12 @@ class VcControl():
         self.skip_author = None
 
         self.stream_err = None
-        self.guild_id = guild_id
+        self.guild_name = guild.name
+        self.guild_id = guild.id
 
         # active display messages
         self.playlist = [] # [(source, m), (source, m) ....]
-        self.views = Views(mChannel, vc, self, guild_id)
+        self.views = Views(mChannel, vc, self, self.guild_id)
 
     # ------------------------- SETTER / UPDATER ------------------------- # 
     # (delete all updatable message when ending sessions)
@@ -53,14 +54,14 @@ class VcControl():
             await m.delete(delay = del_sec)
 
     # ---------------------------- CONTROLS --------------------------- # 
-    async def add(self, vc: discord.VoiceClient = None, source = None, insert = False):
+    async def add(self, vc: discord.VoiceClient, source, player, insert = False):
         print(source.title, source.vid, source.url)
         # append source/queue_item to playlist
         queue_message = await self.views.send_queue_message(vc, source)
         if insert:
-          self.playlist.insert(0, (source, queue_message) ) 
+          self.playlist.insert(0, (source, queue_message, player) ) 
         else:
-          self.playlist.append( (source, queue_message) ) 
+          self.playlist.append( (source, queue_message, player) ) 
         
         if not vc.is_playing(): 
             await self.next()
@@ -113,9 +114,10 @@ class VcControl():
                     self.djObj.djdb.remove_song(vid)
                     continue
                 is_dj_source = True
+                player = "DJ"
             else:
                 # get the song from the first of the queue
-                (source, queue_message) = self.playlist.pop(0)
+                (source, queue_message, player) = self.playlist.pop(0)
                 # delete the corresponding queuing message
                 await queue_message.delete()
                 is_dj_source = False
@@ -123,6 +125,7 @@ class VcControl():
             vid = source.vid
             self.nowPlaying = source
             # actual play
+            self.djObj.djdb.add_history(vid, self.guild_id, self.guild_name, player)
             start = time.time() # start timer for duration
             vc.play(source, after = lambda e: after_handler(e, self.set_stream_error) )
             
@@ -174,7 +177,7 @@ class VcControl():
             # if not silent: await self.notify("Removed: " + self.nowPlaying.title)
             return self.nowPlaying.url
 
-        for i, (s, queue_message) in enumerate(self.playlist): 
+        for i, (s, queue_message, player) in enumerate(self.playlist): 
             if match(key, s):
                 # delete playlist entry and the queue message
                 await queue_message.delete()

@@ -29,5 +29,6 @@ Built using Python 3.7.7 with AWS DynamoDB
     - `yt_API_key`: Your Youtube API key, for video/song search
     - `opus_dir`: opus module library path, used with ffmpeg to play audio
     - `dynamodb_table`: table name of dynamodb for song info
+    - `dynamodb_hist_table`: table name of dynamodb for played histories
 - `options.py`: (Optional, defaulted) Options for ytdl, ffmpeg and other default in-app settings. Change to customise your settings.
     - `cookiefile` options within ytdl options can be added to access premium content

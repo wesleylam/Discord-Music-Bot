@@ -9,3 +9,4 @@ opus_dir = ""
 
 # dynamodb table name
 dynamodb_table = ""
+dynamodb_hist_table = ""

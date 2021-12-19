@@ -1,9 +1,9 @@
 from DJDBException import DJDBException
-from config import dynamodb_table
+from config import dynamodb_table, dynamodb_hist_table
 from options import default_init_vol
 from SongInfo import SongInfo
 import random
-from helper import error_log, error_log_e
+from helper import error_log, error_log_e, get_time
 
 # aws
 import boto3
@@ -21,12 +21,19 @@ class DJDB():
         SongVol = "SongVol"
         Duration = "Duration"
         Qcount = "Qcount"
+    class Attr_hist():
+        Time = "Time" # KEY
+        vID = "vID"
+        DiscordChannelID = "DiscordChannelID"
+        DiscordChannelName = "DiscordChannelName"
+        Player = "Player" # DJ or member
 
     def __init__(self) -> None:
         self.dynamodb = boto3.resource('dynamodb')
 
     def connect(self):
         self.table = self.dynamodb.Table(dynamodb_table)
+        self.hist_table = self.dynamodb.Table(dynamodb_hist_table)
 
     def disconnect(self):
         # no need disconnect?
@@ -352,7 +359,21 @@ class DJDB():
             return None
         else:
             return [ [ item[DJDB.Attr.Title], "https://youtu.be/" + item[DJDB.Attr.vID] ] for item in items[:top] ]
-            
+
+# ------------------ History ------------------- # 
+    def add_history(self, vID, discordChannelID, discordChannelName, player):
+        item = dict()
+        item[DJDB.Attr_hist.Time] = str(get_time())
+        item[DJDB.Attr_hist.vID] = vID
+        item[DJDB.Attr_hist.DiscordChannelID] = discordChannelID
+        item[DJDB.Attr_hist.DiscordChannelName] = discordChannelName
+        item[DJDB.Attr_hist.Player] = player
+
+        # add to db
+        self.hist_table.put_item(Item = item)
+
+
+
 
 if __name__ == "__main__":
     pass

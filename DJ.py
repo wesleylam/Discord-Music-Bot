@@ -56,7 +56,7 @@ class DJ(commands.Cog):
             self.djdb.connect()
             await vc.connect()
             # create new control instance, send current channel for further messaging
-            self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self, ctx.voice_client, ctx.guild.id)
+            self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self, ctx.voice_client, ctx.guild)
         else: 
             n = ctx.voice_client.channel.name
             await self.notify(ctx, f"I am in voice channel: {n}", del_sec=60)
@@ -299,7 +299,7 @@ class DJ(commands.Cog):
         if vc is None:
             await self.join(ctx)
             vc = ctx.voice_client
-        await self.vcControls[ctx.guild.id].add(vc, source, insert = insert)
+        await self.vcControls[ctx.guild.id].add(vc, source, ctx.author, insert = insert)
 
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
