@@ -3,7 +3,6 @@ import discord
 from discord.channel import VocalGuildChannel
 from discord.ext import commands
 from discord_components import ComponentsBot
-from DJDBException import DJDBException
 
 from VcControl import VcControl
 from Views import Views
@@ -16,7 +15,7 @@ from helper import *
 from config import *
 from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log, default_init_vol, loud_vol_factor
 from DJDynamoDB import DJDB
-from DJBannedException import DJBannedException
+from DJExceptions import DJDBException, DJBannedException, DJSongNotFoundException
 from YTDLException import YTDLException
 
 class DJ(commands.Cog):
@@ -154,7 +153,7 @@ class DJ(commands.Cog):
         '''
         args = list(args)
         if len(args) <= 0 or "".join(args) == "": # throw error when no arg given (alternative: play default source)
-            raise Exception("No url or search term given")
+            raise DJSongNotFoundException("No url or search term given")
             # source = StaticSource(discord.FFmpegPCMAudio(source=default_play_dir), volume=default_init_vol)
             # source.url = ''
 
@@ -236,8 +235,8 @@ class DJ(commands.Cog):
         info = yt_search(search_term, use_vID=use_vID)
         # no result from youtube api (by vid)
         if not info: 
-            if use_vID: raise Exception(f"No video found: {vid_to_url(search_term)}")
-            else: raise Exception(f"Nothing found in video form: {search_term}")
+            if use_vID: raise DJSongNotFoundException(f"No video found: {vid_to_url(search_term)}")
+            else: raise DJSongNotFoundException(f"Nothing found in video form: {search_term}")
 
         if insert_after: self.djdb.insert_song(info, newDJable = newDJable)
         return info
@@ -304,7 +303,7 @@ class DJ(commands.Cog):
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
     # COMMAND: nowplaying
-    @commands.command()
+    @commands.command(aliases = ['np'])
     async def nowplaying(self, ctx):
         '''Redisplay nowplaying board w/ controls'''
         await self.vcControls[ctx.guild.id].display_nowplaying()
@@ -372,11 +371,11 @@ class DJ(commands.Cog):
     async def songinfo(self, ctx, *args):
         '''Get song info of a song (DB entry)'''
         try: 
-          vid, vol = await self.process_song_input(ctx, args, DBonly = True)
-          item = self.djdb.db_get(vid)
-        except DJDBException as e: 
-          await self.notify(ctx, f"No record of {' '.join(args)}")
-          return
+            vid, vol = await self.process_song_input(ctx, args, DBonly = True)
+            item = self.djdb.db_get(vid)
+        except DJSongNotFoundException as e: 
+            await self.notify(ctx, f"No record of {' '.join(args)}")
+            return
 
         Title = item[DJDB.Attr.Title]
         url = vid_to_url(item[DJDB.Attr.vID])
@@ -558,6 +557,53 @@ class DJ(commands.Cog):
 
 
 # ------------------------------------------------------------------------------------------------- # 
+# ------------------------------------- HISTORY / STATS --------------------------------------- # 
+    # ------------------------------------------------------------------------------------------------- # 
+
+    # COMMAND: djcount
+    @commands.command(aliases = ['djc'])
+    async def djcount(self, ctx, *args, all_server = False):
+        '''Count how many times a song have been DJed (show rank if song not given)'''
+        await self.count(ctx, *args, dj = True, all_server = all_server)
+
+    # COMMAND: count
+    @commands.command(aliases = ['c'])
+    async def count(self, ctx, *args, all_server = False, 
+        dj = False, top = 20):
+
+        '''Count how many times a song played (by anyone inc. DJ) (show rank if song not given)'''
+
+        if not all_server: guild_id = ctx.guild.id
+        else: guild_id = None
+
+        async with ctx.typing():
+            try: 
+                vID, vol = await self.process_song_input(ctx, args, DBonly = True)
+            except DJSongNotFoundException as e: 
+                vID = None
+
+            if vID:
+                # specific song count
+
+                # will not fail by no vID, checked at the top of this function
+                times = self.djdb.get_hist_count(vID, serverID = guild_id, dj = dj)
+                title = self.djdb.db_get(vID, [DJDB.Attr.Title])[DJDB.Attr.Title]
+
+                head_m = f"DJ played **{title}**" if dj else f"**{title}** played"
+                m = f"{head_m} : __**{times}**__ time{'s' if times > 1 else ''}{'' if all_server else ' on this channel'} \n{vid_to_url(vID)}"
+            else:
+                # find most played song
+                rank = self.djdb.get_hist_rank(serverID = guild_id, dj = dj)
+                head_m = "DJed" if dj else "played"
+                m = f"Most {head_m} song on this channel: (top {top})\n"
+                for (vID, title, times) in rank[:top]:
+                    m += f"__**{times}**__: {title}\n"
+
+            await ctx.send(m)
+
+
+
+# ------------------------------------------------------------------------------------------------- # 
 # ------------------------------------- EVENT/ERROR HANDLING --------------------------------------- # 
     # ------------------------------------------------------------------------------------------------- # 
     @commands.Cog.listener()		
@@ -579,6 +625,7 @@ class DJ(commands.Cog):
     @commands.Cog.listener()
     async def on_button_click(self, interaction):
         ctx = await self.bot.get_context(interaction.message)
+        ctx.author = interaction.author
 
         id = interaction.component.id
         guild_id, received_action, other_param = Views.decompose_btn_id(id)

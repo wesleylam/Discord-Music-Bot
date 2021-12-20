@@ -2,7 +2,7 @@ import discord
 import asyncio
 from options import ffmpeg_error_log
 from Views import Views, ViewUpdateType
-from DJBannedException import DJBannedException
+from DJExceptions import DJBannedException
 from YTDLException import YTDLException
 from helper import error_log_e, error_log
 import time
@@ -125,12 +125,12 @@ class VcControl():
             vid = source.vid
             self.nowPlaying = source
             # actual play
-            self.djObj.djdb.add_history(vid, self.guild_id, self.guild_name, player)
+            self.djObj.djdb.add_history(vid, self.guild_id, self.guild_name, str(player))
             start = time.time() # start timer for duration
             vc.play(source, after = lambda e: after_handler(e, self.set_stream_error) )
             
             # show playing views for controls
-            await self.views.show_playing(is_dj_source, source, start_time = start)
+            await self.views.show_playing(is_dj_source, source, start_time = start, player = player)
 
             # wait until the current track ends
             while vc.is_playing(): 

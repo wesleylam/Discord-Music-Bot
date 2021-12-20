@@ -61,11 +61,11 @@ class Views():
         return self.queue_message
 
     # -------------------------------- NOWPLAYING VIEW ---------------------------------- # 
-    def get_playing_string(self, is_dj_source, source, start_time):
-        dj_string = "**DJ** " if is_dj_source else ""
+    def get_playing_string(self, source, start_time, player = ""):
+        player_string = f"**{player}**" 
         current_duration = readable_duration(time.time() - start_time)
         full_duration = readable_duration(source.duration) if source.duration > 0 else "Unknown"
-        self.playing_string = f"{dj_string}Now Playing: {source.title} \n{current_duration}/{full_duration} - {source.url}"
+        self.playing_string = f"{player_string} Now Playing: {source.title} \n{current_duration}/{full_duration} - {source.url}"
         return self.playing_string
 
     def update_duration(self, original_str):
@@ -81,11 +81,11 @@ class Views():
 
 
     # send message on text channel with action buttons
-    async def show_playing(self, is_dj_source, source, start_time = None, extended = False):
+    async def show_playing(self, is_dj_source, source, player = "", start_time = None, extended = False):
         if start_time: self.start_time = start_time
 
         self.playbox = await self.mChannel.send(
-            self.get_playing_string(is_dj_source, source, self.start_time),
+            self.get_playing_string(source, self.start_time, player = player),
             components = self.playbox_components(extended = extended)
         )
 

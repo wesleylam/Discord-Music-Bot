@@ -1,4 +1,4 @@
-from DJDBException import DJDBException
+from DJExceptions import DJDBException
 from config import dynamodb_table, dynamodb_hist_table
 from options import default_init_vol
 from SongInfo import SongInfo
@@ -24,8 +24,8 @@ class DJDB():
     class Attr_hist():
         Time = "Time" # KEY
         vID = "vID"
-        DiscordChannelID = "DiscordChannelID"
-        DiscordChannelName = "DiscordChannelName"
+        ServerID = "ServerID"
+        ServerName = "ServerName"
         Player = "Player" # DJ or member
 
     def __init__(self) -> None:
@@ -135,7 +135,7 @@ class DJDB():
         song = self.db_get(vID, [DJDB.Attr.Queries])
 
         # transform query into tokens
-        query_words = self.chop_query(query)
+        query_words = self.chop_query(query.lower())
 
         # check for duplicate
         for q in song[DJDB.Attr.Queries]:
@@ -190,7 +190,18 @@ class DJDB():
 
     # remove song and all its queries
     def remove_song(self, vid):
+        # delete song entry
         self.table.delete_item( Key = {"vID": vid} )
+
+        # delete related history
+        response = self.hist_table.scan(
+            FilterExpression = Attr(DJDB.Attr_hist.vID).eq(vid),
+        )
+        items = response['Items'] # items: list of dict
+        for item in items: 
+            self.hist_table.delete_item(
+                Key = {DJDB.Attr_hist.Time: item[DJDB.Attr_hist.Time]},
+            )
 
     # --------------------------- Song info upate ---------------------------- # 
     def switch_djable(self, vID):
@@ -302,7 +313,7 @@ class DJDB():
             return None
         else:
             # current query chopped into words and sorted
-            query_words = self.chop_query(query)
+            query_words = self.chop_query(query.lower())
 
             # HEAVY
             for item in items:
@@ -361,17 +372,66 @@ class DJDB():
             return [ [ item[DJDB.Attr.Title], "https://youtu.be/" + item[DJDB.Attr.vID] ] for item in items[:top] ]
 
 # ------------------ History ------------------- # 
-    def add_history(self, vID, discordChannelID, discordChannelName, player):
+    def add_history(self, vID, serverID, serverName, player):
         item = dict()
         item[DJDB.Attr_hist.Time] = str(get_time())
         item[DJDB.Attr_hist.vID] = vID
-        item[DJDB.Attr_hist.DiscordChannelID] = discordChannelID
-        item[DJDB.Attr_hist.DiscordChannelName] = discordChannelName
+        item[DJDB.Attr_hist.ServerID] = serverID
+        item[DJDB.Attr_hist.ServerName] = serverName
         item[DJDB.Attr_hist.Player] = player
 
         # add to db
         self.hist_table.put_item(Item = item)
 
+    def get_hist_rank(self, serverID = None, dj = False, top = 20):
+        filter = None
+        if serverID: 
+            filter = Attr(DJDB.Attr_hist.ServerID).eq(serverID) 
+        if dj: 
+            filter = (filter & Attr(DJDB.Attr_hist.Player).eq("DJ")) if filter else Attr(DJDB.Attr_hist.Player).eq("DJ")
+        
+        if filter: 
+            response = self.hist_table.scan(
+                FilterExpression = filter,
+                ProjectionExpression = f'{DJDB.Attr_hist.vID}'
+            )
+        else: 
+            response = self.hist_table.scan(
+                ProjectionExpression = f'{DJDB.Attr_hist.vID}'
+            )
+        items = response['Items'] # items: list of dict
+        
+        if len(items) <= 0:
+            # no DJ history at all
+            return None
+        else:
+            rank = {}
+            for item in items:
+                item_vID = item[DJDB.Attr_hist.vID]
+                if item_vID not in rank:
+                    rank[item_vID] = 1
+                else:
+                    rank[item_vID] += 1
+            print(rank)
+                
+            # (vID, song title, times played)
+            ranked_DJ_history = [ (vID, self.db_get(vID, [DJDB.Attr.Title])[DJDB.Attr.Title], times ) for vID, times in sorted(rank.items(), key=lambda song: song[1]) ]
+            return ranked_DJ_history
+
+
+
+    def get_hist_count(self, vID, serverID = None, dj = False):
+        filter = Attr(DJDB.Attr_hist.vID).eq(vID)
+        if serverID: filter = filter & Attr(DJDB.Attr_hist.ServerID).eq(serverID) 
+        if dj: filter = filter & Attr(DJDB.Attr_hist.Player).eq("DJ")
+
+        response = self.hist_table.scan(
+            FilterExpression = filter
+        )
+
+        items = response['Items'] # items: list of dict
+        
+        return len(items)
 
 
 
