@@ -560,18 +560,30 @@ class DJ(commands.Cog):
 # ------------------------------------- HISTORY / STATS --------------------------------------- # 
     # ------------------------------------------------------------------------------------------------- # 
 
+    # COMMAND: djcountall
+    @commands.command(aliases = ['djca', 'djcall'])
+    async def djcountall(self, ctx, *args):
+        '''Count how many times a song have been DJed (show rank if song not given) on all channels'''
+        await self.djcount(ctx, *args, all_server = True)
+
     # COMMAND: djcount
     @commands.command(aliases = ['djc'])
     async def djcount(self, ctx, *args, all_server = False):
-        '''Count how many times a song have been DJed (show rank if song not given)'''
+        '''Count how many times a song have been DJed (show rank if song not given) on this channel'''
         await self.count(ctx, *args, dj = True, all_server = all_server)
+
+    # COMMAND: countall
+    @commands.command(aliases = ['ca', 'call'])
+    async def countall(self, ctx, *args):
+        '''Count how many times a song played (by anyone inc. DJ) (show rank if song not given) on all channels'''
+        await self.count(ctx, *args, all_server = True)
 
     # COMMAND: count
     @commands.command(aliases = ['c'])
     async def count(self, ctx, *args, all_server = False, 
         dj = False, top = 20):
 
-        '''Count how many times a song played (by anyone inc. DJ) (show rank if song not given)'''
+        '''Count how many times a song played (by anyone inc. DJ) (show rank if song not given) on this channel'''
 
         if not all_server: guild_id = ctx.guild.id
         else: guild_id = None
@@ -595,7 +607,7 @@ class DJ(commands.Cog):
                 # find most played song
                 rank = self.djdb.get_hist_rank(serverID = guild_id, dj = dj)
                 head_m = "DJed" if dj else "played"
-                m = f"Most {head_m} song on this channel: (top {top})\n"
+                m = f"Most {head_m} song{'' if all_server else ' on this channel'}: (top {top})\n"
                 for (vID, title, times) in rank[:top]:
                     m += f"__**{times}**__: {title}\n"
 

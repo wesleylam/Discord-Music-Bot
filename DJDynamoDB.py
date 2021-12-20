@@ -415,7 +415,7 @@ class DJDB():
             print(rank)
                 
             # (vID, song title, times played)
-            ranked_DJ_history = [ (vID, self.db_get(vID, [DJDB.Attr.Title])[DJDB.Attr.Title], times ) for vID, times in sorted(rank.items(), key=lambda song: song[1]) ]
+            ranked_DJ_history = [ (vID, self.db_get(vID, [DJDB.Attr.Title])[DJDB.Attr.Title], times ) for vID, times in sorted(rank.items(), key=lambda song: song[1], reverse=True) ]
             return ranked_DJ_history
 
 
