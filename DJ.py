@@ -124,7 +124,7 @@ class DJ(commands.Cog):
         await self.skip(ctx)
 
     # COMMAND: insert
-    @commands.command(aliases=['ptop', 'play top'])
+    @commands.command(aliases=['pn', 'pnow', 'play now'])
     async def insert(self, ctx, *kwords):
         '''Play a song next (top of the queue)'''
         await self.play(ctx, *kwords, insert = True)    
