@@ -145,7 +145,8 @@ class Views():
             f"{head}: {source.title}",
             components = [[
                 self.encore_button(self.vc, source.vid),
-                self.del_from_db_button(self.vc, source.vid),
+                # self.del_from_db_button(self.vc, source.vid),
+                self.make_undjable_button(self.vc, source.vid)
             ]]
         )
         self.playbox = None
@@ -221,9 +222,13 @@ class Views():
             lambda i: self.switch_djable_callback(i, vc, vid, queue = queue),
         )
 
-    # handle in DJ.py
+    # handle in DJ.py (no longer using)
     def del_from_db_button(self, vc, vid):
         return Button(style=ButtonStyle.red, label="Del from DB", id=self.BIgen("del", vid))
+
+    # handle in DJ.py
+    def make_undjable_button(self, vc, vid):
+        return Button(style=ButtonStyle.red, label="Make not DJable", id=self.BIgen("notdjable", vid))
 
     def leave_button(self):
         return self.djbot_component_manager.add_callback(

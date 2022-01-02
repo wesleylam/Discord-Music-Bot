@@ -646,6 +646,7 @@ class DJ(commands.Cog):
             'encore': self.repeat_btn_handler,
             'reDJ': self.reDJ_btn_handler,
             'del': self.del_btn_handler,
+            'notdjable': self.notdjable_btn_handler
         }
         try: await actions[received_action](ctx, other_param)
         except KeyError: pass # button not mapped in action above (not global btn)
@@ -665,6 +666,10 @@ class DJ(commands.Cog):
         self.djdb.remove_song(vid)
         await self.notify(ctx, f"Removed song from db ({vid})")
 
+    async def notdjable_btn_handler(self, ctx, p):
+        vid = p[0]
+        self.djdb.set_djable(vid, False)
+        await self.notify(ctx, f"{vid_to_url(vid)} is now not DJable")
 
     # handle all (command) error
     @commands.Cog.listener()
