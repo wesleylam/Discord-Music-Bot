@@ -393,6 +393,7 @@ class DJ(commands.Cog):
             embedInfo.add_field(name="Queries", value=Queries, inline=False)
 
         await ctx.send(
+            url,
             embed = embedInfo
         )
 

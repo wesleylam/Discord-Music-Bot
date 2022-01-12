@@ -353,11 +353,12 @@ class DJDB():
             return [ [ item[a] for a in needed_attr ] for item in items[:top] ]
             
 
-    # search songs by title
+    # search songs by title and queries
     def search(self, search_term, top = 10):
-        needed_attr = [ DJDB.Attr.Title, DJDB.Attr.vID ]
-        needed_attr_str = ", ".join(needed_attr)
 
+        ############## search by title
+        needed_attr = [ DJDB.Attr.Title, DJDB.Attr.vID, DJDB.Attr.Queries ]
+        needed_attr_str = ", ".join(needed_attr)
         # IDEA: can implement multiple search terms?
         response = self.table.scan(
             FilterExpression = Attr(DJDB.Attr.STitle).contains(search_term),
@@ -366,10 +367,40 @@ class DJDB():
         items = response['Items'] # items: list of dict
 
         if len(items) <= 0:
-            # no songs at all
-            return None
+            # no songs matching search term at all
+            title_searched_vids = []
+            title_searched_songs = []
         else:
-            return [ [ item[DJDB.Attr.Title], "https://youtu.be/" + item[DJDB.Attr.vID] ] for item in items[:top] ]
+            title_searched_vids = [ item[DJDB.Attr.vID] for item in items[:top] ]
+            title_searched_songs = [ [ item[DJDB.Attr.Title], "https://youtu.be/" + item[DJDB.Attr.vID] ] for item in items[:top] ]
+        
+        ############## search by queries
+        # scan all songs' queries
+        response = self.table.scan(
+            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}, {DJDB.Attr.Title}'
+        )
+        items = response['Items'] # items: list of dict
+        if len(items) <= 0:
+            # no songs at all
+            return title_searched_songs
+        else:
+            # current query chopped into words and sorted
+            query_words = self.chop_query(search_term.lower())
+            query_searched_songs = []
+            # HEAVY
+            for item in items:
+                # skip songs matched title
+                if item[DJDB.Attr.vID] in title_searched_vids:
+                    continue
+
+                for song_query in item[DJDB.Attr.Queries]:
+                    # match query
+                    if any(word in song_query for word in query_words):
+                        query_searched_songs.append([ f"{item[DJDB.Attr.Title]} [{'/'.join(song_query)}]", "https://youtu.be/" + item[DJDB.Attr.vID] ])
+                        break
+
+            # no match
+            return title_searched_songs + query_searched_songs
 
 # ------------------ History ------------------- # 
     def add_history(self, vID, serverID, serverName, player):
