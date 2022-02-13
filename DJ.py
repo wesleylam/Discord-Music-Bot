@@ -62,12 +62,14 @@ class DJ(commands.Cog):
 
     # -------------------- Leave voice channel --------------------
     @commands.command()
-    async def leave(self, ctx):
+    async def leave(self, ctx, guild_id = None):
         '''Let bot leave voice channel'''
+        if guild_id == None:
+            guild_id = ctx.guild.id
         if ctx.voice_client is None:
             raise Exception("I am not in any voice channel, use join command instead")
         else: 
-            await self.vcControls[ctx.guild.id].disconnectVC()
+            await self.vcControls[guild_id].disconnectVC()
             
     # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
@@ -108,7 +110,9 @@ class DJ(commands.Cog):
     async def meme(self, ctx, *kwords):
         '''Play a meme instantly (with high volume)'''
         await self.play(ctx, *kwords, insert = True, loud = True, newDJable = False)
-        await self.skip(ctx)
+        # skip the current song if there is playing
+        if ctx.voice_client is not None and ctx.voice_client.is_playing(): 
+            await self.skip(ctx)
 
     # COMMAND: rape
     @commands.command(aliases=['earrape', 'r'])
@@ -130,7 +134,7 @@ class DJ(commands.Cog):
         await self.play(ctx, *kwords, insert = True)    
         
     # COMMAND: playonce
-    @commands.command(aliases=['p1', 'pone', 'play1', 'ponce'])
+    @commands.command(aliases=['p1', 'pone', 'play1', 'ponce', 'po'])
     async def playonce(self, ctx, *kwords):
         '''Play a song with default not-DJable (only apply with its new song)'''
         await self.play(ctx, *kwords, newDJable = False)

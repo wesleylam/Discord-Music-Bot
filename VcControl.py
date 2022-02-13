@@ -14,6 +14,7 @@ class VcControl():
         self.dj = None # dj type: string?
         self.djObj = djo
         self.vc = vc # voice client
+        self.voice_client = vc # for passing ctx
         self.skip_author = None
 
         self.stream_err = None
@@ -100,7 +101,8 @@ class VcControl():
             raise Exception("Already playing songs")
 
         # queue loop
-        while len(self.playlist) > 0 or self.dj:
+        while (len(self.playlist) > 0 or self.dj):
+            members = vc.channel.members
             # activate dj when no song in queue
             if self.dj and len(self.playlist) <= 0: 
                 # query a random vid and compile source
@@ -149,6 +151,11 @@ class VcControl():
             # reset skip author and stream error
             self.skip_author = None
             self.stream_err = None
+
+            # auto leave when no one else in vchannel
+            if len(members) == 1:
+                await self.djObj.leave(self, self.guild_id)
+                return
 
         # end of playlist
         return 
