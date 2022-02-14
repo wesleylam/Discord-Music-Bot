@@ -2,6 +2,7 @@ from options import banned_list, banned_reason, baseboost_list, default_error_lo
 import datetime
 import traceback
 import pytz
+import random
 
 # debug printing function 
 def help(o):
@@ -65,6 +66,12 @@ def yturl_to_vid(url):
 
 def vid_to_url(vid):
     return f"https://youtu.be/{vid}"
+
+def vid_to_thumbnail(vid):
+    return f"https://i.ytimg.com/vi/{vid}/default.jpg"
+
+def rand_color():
+    return random.randint(0, 16**6)
 
 
 # ----------------------------------------- TIME RELATED ----------------------------------------------- # 

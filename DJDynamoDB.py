@@ -3,7 +3,7 @@ from config import dynamodb_table, dynamodb_hist_table
 from options import default_init_vol
 from SongInfo import SongInfo
 import random
-from helper import error_log, error_log_e, get_time
+from helper import error_log, error_log_e, get_time, vid_to_thumbnail
 
 # aws
 import boto3
@@ -357,7 +357,7 @@ class DJDB():
     def search(self, search_term, top = 10):
 
         ############## search by title
-        needed_attr = [ DJDB.Attr.Title, DJDB.Attr.vID, DJDB.Attr.Queries ]
+        needed_attr = [ DJDB.Attr.Title, DJDB.Attr.vID, DJDB.Attr.Queries, DJDB.Attr.ChannelID]
         needed_attr_str = ", ".join(needed_attr)
         # IDEA: can implement multiple search terms?
         response = self.table.scan(
@@ -372,12 +372,12 @@ class DJDB():
             title_searched_songs = []
         else:
             title_searched_vids = [ item[DJDB.Attr.vID] for item in items[:top] ]
-            title_searched_songs = [ [ item[DJDB.Attr.Title], "https://youtu.be/" + item[DJDB.Attr.vID] ] for item in items[:top] ]
+            title_searched_songs = [ SongInfo(item[DJDB.Attr.vID], item[DJDB.Attr.Title], item[DJDB.Attr.ChannelID], vid_to_thumbnail(item[DJDB.Attr.vID])) for item in items[:top] ]
         
         ############## search by queries
         # scan all songs' queries
         response = self.table.scan(
-            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}, {DJDB.Attr.Title}'
+            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}, {DJDB.Attr.Title}, {DJDB.Attr.ChannelID}'
         )
         items = response['Items'] # items: list of dict
         if len(items) <= 0:
@@ -396,7 +396,14 @@ class DJDB():
                 for song_query in item[DJDB.Attr.Queries]:
                     # match query
                     if any(word in song_query for word in query_words):
-                        query_searched_songs.append([ f"{item[DJDB.Attr.Title]} [{'/'.join(song_query)}]", "https://youtu.be/" + item[DJDB.Attr.vID] ])
+                        query_searched_songs.append( 
+                            SongInfo(
+                                item[DJDB.Attr.vID], 
+                                f"{item[DJDB.Attr.Title]} [{'/'.join(song_query)}]", 
+                                item[DJDB.Attr.ChannelID], 
+                                vid_to_thumbnail(item[DJDB.Attr.vID])
+                            )
+                        )
                         break
 
             # no match

@@ -1,9 +1,10 @@
 class SongInfo():
 
-    def __init__(self, vID, title, channelID) -> None:
+    def __init__(self, vID, title, channelID, thumbnailURL = "") -> None:
         self.vID = vID
         self.title = title
         self.channelID = channelID
+        self.thumbnailURL = thumbnailURL
 
     def get_all_info(self):
         return self.vID, self.title, self.channelID

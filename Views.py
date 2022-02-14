@@ -1,9 +1,9 @@
 import discord
-from discord_components import Button, ButtonStyle, component
+from discord_components import Button, ButtonStyle
 from helper import *
 from enum import Enum
-import random
 import time
+from DJDynamoDB import DJDB
 
 class ViewUpdateType(Enum):
     REPOST = 1
@@ -59,6 +59,58 @@ class Views():
             ]]
         )
         return self.queue_message
+
+    # -------------------------------- SEARCH VIEW ---------------------------------- # 
+
+    async def send_search_options(self, search_term, songs):
+        # one button for each song
+        buttons = []
+        for i, song in enumerate(songs):
+            buttons.append(
+                self.encore_button(None, song.vID, label = f"{i+1}", style = random.randint(1,4))
+            )
+
+            # create a song box embed
+            embedSong = Views.song_box(song, title = f"{i+1}. {song.title}")
+            await self.mChannel.send(
+                embed = embedSong
+            )
+
+        await self.mChannel.send(
+            f"Search: {search_term}",
+            components=[ buttons, ]
+        )
+
+    # -------------------------------- SEARCH VIEW ---------------------------------- # 
+    
+    def song_box(song, title = None):
+        color=rand_color()
+        embedSong = discord.Embed(title = song.title if title is None else title, color=color, url = vid_to_url(song.vID))
+        thumbnail = song.thumbnailURL
+        embedSong.set_thumbnail(url = thumbnail)
+        return embedSong
+
+    def song_info_box(item, DJcount):
+        
+        vid = item[DJDB.Attr.vID]
+        Title = item[DJDB.Attr.Title]
+        url = vid_to_url(vid)
+        DJable = "**[DJable]**" if item[DJDB.Attr.DJable] else ""
+        Duration = item[DJDB.Attr.Duration]
+        Queries = "\n".join( [ f"{i+1}: " + " ".join([s for s in q]) for i, q in enumerate(item[DJDB.Attr.Queries]) ] )
+        Qcount = item[DJDB.Attr.Qcount]
+        SongVol = item[DJDB.Attr.SongVol]
+
+        embedInfo = discord.Embed(title=Title, description=url + " " + DJable, color = rand_color(), url = url)
+        embedInfo.add_field(name="DJ count", value=DJcount)
+        embedInfo.add_field(name="Queue count", value=Qcount, inline=True)
+        embedInfo.add_field(name="Duration", value=readable_time(Duration))
+        embedInfo.add_field(name="Song Volume", value=f"{SongVol * 10}", inline=True)
+        embedInfo.set_thumbnail(url = vid_to_thumbnail(vid))
+        if Queries != "": 
+            embedInfo.add_field(name="Queries", value=Queries, inline=False)
+            
+        return embedInfo
 
     # -------------------------------- NOWPLAYING VIEW ---------------------------------- # 
     def get_playing_string(self, source, start_time, player = ""):
@@ -198,8 +250,8 @@ class Views():
         )
 
     # handle in DJ.py
-    def encore_button(self, vc, vid):
-        return Button(style=ButtonStyle.blue, label="Encore", id=self.BIgen("encore", vid))
+    def encore_button(self, vc, vid, label = "Encore", style = ButtonStyle.blue):
+        return Button(style=style, label=label, id=self.BIgen("encore", vid))
 
     def remove_button(self, vc, vid, label = "Skip"):
         return self.djbot_component_manager.add_callback(

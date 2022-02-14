@@ -1,12 +1,11 @@
 import os
 import discord
-from discord.channel import VocalGuildChannel
 from discord.ext import commands
 from discord_components import ComponentsBot
 
 from VcControl import VcControl
 from Views import Views
-from ytAPIget import yt_search
+from ytAPIget import yt_search, yt_search_all
 import youtube_dl
 from YTDLSource import YTDLSource, StaticSource
 from youtube_dl.utils import DownloadError
@@ -30,7 +29,6 @@ class DJ(commands.Cog):
 
         self.djdb.connect()
 
-
     # ---------------------------- MESSAGING --------------------------- # 
     async def notify(self, ctx, message, del_sec = 10):
         if str(message) == "": return # prevent err
@@ -47,7 +45,7 @@ class DJ(commands.Cog):
     # -------------------------------------------------------------------------------------------- # 
     # -------------------- Join voice channel -------------------- #
     @commands.command()
-    async def join(self, ctx):
+    async def join(self, ctx, silence = False):
         '''Let bot join the voice channel (caller's channel / most populated channel)'''
         print(ctx.guild.id)
         if ctx.voice_client is None:
@@ -58,10 +56,11 @@ class DJ(commands.Cog):
             self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self, ctx.voice_client, ctx.guild)
         else: 
             n = ctx.voice_client.channel.name
-            await self.notify(ctx, f"I am in voice channel: {n}", del_sec=60)
+            if not silence:
+                await self.notify(ctx, f"I am in voice channel: {n}", del_sec=60)
 
     # -------------------- Leave voice channel --------------------
-    @commands.command()
+    @commands.command(aliases=['l'])
     async def leave(self, ctx, guild_id = None):
         '''Let bot leave voice channel'''
         if guild_id == None:
@@ -90,19 +89,16 @@ class DJ(commands.Cog):
         '''Turn off DJ'''
         await self.dj(ctx, type=None)
 
-    # COMMAND: playsearch
-    @commands.command(aliases=['psearch', 'ps'])
-    async def playsearch(self, ctx, *kwords):
-        '''Search in youtube and play a picked song'''
+    # COMMAND: playvideo
+    @commands.command(aliases=['pv', 'playv', 'pvid', 'vid', 'playvid', 'pvideo'])
+    async def playvideo(self, ctx, *kwords):
+        '''Search video (not limited to music) in youtube and play a picked video'''
         s = list(kwords)
         if len(s) <= 0 or "".join(s) == "": # throw error when no arg given 
             raise Exception("No search term(s) given")
-        ### scp: 1. search | 2. compile | 3. play 
-        # 1. search -> get url
-        vid, vol = await self.scp_search_choice(ctx, s,)
 
-        # 2 & 3
-        await self.compile_and_play(ctx, vid, vol)
+        # send search results in Views
+        await self.scp_search_choice(ctx, s, force_music = False)
 
 
     # COMMAND: meme
@@ -144,16 +140,18 @@ class DJ(commands.Cog):
     @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords, insert = False, loud = False, baseboost = False, newDJable = True):
         '''Play a song (search in youtube / youtube link)'''
-        vid, vol = await self.process_song_input(ctx, kwords, newDJable = newDJable)
+        r = await self.process_song_input(ctx, kwords, newDJable = newDJable)
 
-        # 2 & 3
-        await self.compile_and_play(ctx, vid, vol = vol, insert = insert, loud = loud, baseboost = baseboost)
+        if r:
+            vid, vol = r
+            # 2 & 3
+            await self.compile_and_play(ctx, vid, vol = vol, insert = insert, loud = loud, baseboost = baseboost)
 
 
     async def process_song_input(self, ctx, args, DBonly = False, newDJable = True):
         '''
         Process song input (from link or search terms)
-        return vid
+        return vid ONLY if passed url
         '''
         args = list(args)
         if len(args) <= 0 or "".join(args) == "": # throw error when no arg given (alternative: play default source)
@@ -175,8 +173,13 @@ class DJ(commands.Cog):
             else: 
                 vol = match[DJDB.Attr.SongVol]
         else: 
-            # case 2: find in query db (or query yt if none)
-            vid, vol = await self.scp_search(ctx, args, DBonly = DBonly, newDJable = newDJable)
+            if DBonly:
+                # case 2: find in query db (or query yt if none)
+                vid, vol = await self.scp_search(ctx, args, DBonly = DBonly, newDJable = newDJable)
+            else:
+                # search and display youtube top choices
+                await self.scp_search_choice(ctx, args)
+                return None
 
         return vid, vol
         
@@ -194,11 +197,18 @@ class DJ(commands.Cog):
 
 # ---------------------------- SEARCH COMPILE PLAY --------------------------------- #     
 
-    async def scp_search_choice(self, ctx, s, DBonly = False):
-        '''(ps) scp step 1 (w/choice): search (youtube API only)'''
-        vid = None
-        vol = None
-        return vid, vol
+    async def scp_search_choice(self, ctx, s, force_music = True):
+        '''search (youtube API only) and show options to pick'''
+        # search for url in youtube API
+        search_term = (" ".join(s)).lower()
+        await self.notify(ctx, f"Searching: {search_term}")
+        # get songs list by searching youtube API
+        songs = yt_search_all(search_term, n = 5, force_music = force_music)
+        
+        # join vChannel to get views and vcControl
+        await self.join(ctx, silence = True)
+        # show option views
+        await self.vcControls[ctx.guild.id].views.send_search_options(search_term, songs)
 
     async def scp_search(self, ctx, s, DBonly = False, newDJable = True):
         '''scp step 1: search (in db or youtube)'''
@@ -381,23 +391,10 @@ class DJ(commands.Cog):
             await self.notify(ctx, f"No record of {' '.join(args)}")
             return
 
-        Title = item[DJDB.Attr.Title]
-        url = vid_to_url(item[DJDB.Attr.vID])
-        DJable = "**[DJable]**" if item[DJDB.Attr.DJable] else ""
-        Duration = item[DJDB.Attr.Duration]
-        Queries = "\n".join( [ f"{i+1}: " + " ".join([s for s in q]) for i, q in enumerate(item[DJDB.Attr.Queries]) ] )
-        Qcount = item[DJDB.Attr.Qcount]
-        SongVol = item[DJDB.Attr.SongVol]
-
-        embedInfo = discord.Embed(title=Title, description=url + " " + DJable, color=0x00ff00)
-        embedInfo.add_field(name="Queue count", value=Qcount, inline=True)
-        embedInfo.add_field(name="Duration", value=readable_time(Duration), inline=True)
-        embedInfo.add_field(name="Song Volume", value=f"{SongVol} (default: {default_init_vol  * 100})", inline=True)
-        if Queries != "": 
-            embedInfo.add_field(name="Queries", value=Queries, inline=False)
-
+        # only counting in this server
+        DJcount = self.djdb.get_hist_count(vid, dj = True)
+        embedInfo = Views.song_info_box(item, DJcount)
         await ctx.send(
-            url,
             embed = embedInfo
         )
 
@@ -500,20 +497,19 @@ class DJ(commands.Cog):
         '''List all matching title songs'''
         q = " ".join(args)
         songs = self.djdb.search(search_term = q)
-        await self.list(ctx, display_list = songs, title = f"Searching: {q}", none_message = "No song found")
+        await self.list(ctx, songs = songs, title = f"Searching: {q}", none_message = "No song found")
 
 
     # list: for listing in discord channel (eg: list songs)
-    async def list(self, ctx, display_list, title = "", none_message = "Nothing found"):
-        if display_list:
-            str = title 
-            if title != "": str += "\n"
-            for i, s in enumerate(display_list):
-                str += f"{i+1}: "
-                for detail in s:
-                    str += f"{detail}\t"
-                str += "\n"
-            await self.notify(ctx, str, del_sec=None)
+    async def list(self, ctx, songs, title = "", none_message = "Nothing found"):
+        if songs:
+            await self.notify(ctx, title, del_sec=None)
+            for i, song in enumerate(songs):
+                # create a song box embed
+                embedSong = Views.song_box(song, title = f"{i+1}. {song.title}")
+                await ctx.channel.send(
+                    embed = embedSong
+                )
         else: 
             await self.notify(ctx, none_message)
 
@@ -626,7 +622,7 @@ class DJ(commands.Cog):
     @commands.Cog.listener()		
     async def on_ready(self, ):
         await self.bot_status(False)
-        print(f'Logged in as {client.user} (ID: {client.user.id})')
+        print(f'Logged in as {self.bot.user} (ID: {self.bot.user.id})')
         print('------')
 
     
