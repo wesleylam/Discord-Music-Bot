@@ -41,6 +41,18 @@ class DJ(commands.Cog):
             assert type(del_sec) == int
             await m.delete(delay = del_sec)
 
+
+    @commands.command(aliases=['g'])
+    async def gif(self, ctx, *kwords):
+        '''Display a random gif from tenor'''
+        s = list(kwords)
+        if len(s) <= 0 or "".join(s) == "": # throw error when no arg given 
+            q = random.choice(opening_gif_search_list + leaving_gif_search_list)
+        else: 
+            q = " ".join(s)
+
+        await ctx.send(get_tenor_gif(q))
+
 # -------------------------------------------------------------------------------------------- # 
 # ------------------------------------- VOICE CONTROL ---------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 

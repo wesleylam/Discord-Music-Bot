@@ -6,12 +6,14 @@ import random
 
 
 def get_tenor_gif(q, limit = 10):
+    '''get a random gif'''
     url = f"https://g.tenor.com/v1/search?q={q}&key={tenor_API_key}&limit={limit}"    
     params = {
         'Authorization': 'Bearer',
         'Accept': 'application/json'
     }
 
+    print(f"tenor gif searching: {q}")
     r = requests.get(url = url, params = params) 
     results = r.json()['results']
     result = random.choice(results)

@@ -3,6 +3,7 @@ import requests
 import json
 import os
 from config import yt_API_key
+from helper import is_banned
 
 def get_yt_suggestions(vID, force_music = True):
     categoryID_get = f"&videoCategoryId={10}"
@@ -99,14 +100,17 @@ def yt_search_suggestions(vID):
         videoID = item['id'][kind + 'Id']
         # if snippet does not exist, probably means the video is no longer available
         if kind == "video" and "snippet" in item.keys():
-            s = SongInfo(
+            # only add to list if not banned
+            title = item['snippet']['title']
+            if not is_banned(title):
+                s = SongInfo(
                     videoID, 
-                    item['snippet']['title'], 
+                    title, 
                     item['snippet']['channelId'],
                     item['snippet']['thumbnails']['default']['url'], 
                 )
-            songs.append(s)
-            print(s)
+                songs.append(s)
+                print(s)
     
     return songs
 

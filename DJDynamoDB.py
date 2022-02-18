@@ -317,6 +317,11 @@ class DJDB():
 
             # HEAVY
             for item in items:
+                # bug: only with {'vID': 'QS'}
+                if DJDB.Attr.Queries not in item.keys():
+                    self.remove_song(item[DJDB.Attr.vID])
+                    break
+
                 for q in item[DJDB.Attr.Queries]:
                     # ensure q in database is sorted
                     if not all(q[i] <= q[i+1] for i in range(len(q)-1)):

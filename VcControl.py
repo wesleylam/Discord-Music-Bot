@@ -5,7 +5,7 @@ from options import ffmpeg_error_log, default_init_vol, leaving_gif_search_list
 from Views import Views, ViewUpdateType
 from DJExceptions import DJBannedException
 from YTDLException import YTDLException
-from helper import error_log_e, error_log
+from helper import error_log_e, error_log, play_after_handler
 from DJDynamoDB import DJDB
 import time
 import random
@@ -74,87 +74,48 @@ class VcControl():
 
     ###  Main playing function  ###
     async def next(self):
+        '''Play the next song / Start the dj or queue loop'''
         vc = self.vc
-        def after_handler(e, set_error):
-            # read ffmpeg error
-            ffmpeg_err_m = None
-            with open(ffmpeg_error_log, "r") as f:
-                # get to last line
-                for line in f.readlines():
-                    pass
-                # check for possible error
-                if "403 Forbidden" in line[-50:]:
-                    ffmpeg_err_m = "Access denied"
-                elif "Broken pipe" in line[-50:]:
-                    ffmpeg_err_m = "Disrupted"
-
-            if ffmpeg_err_m:
-                message = f"ffmpeg error: {line}"
-                error_log(message)
-                print(message)
-                set_error(f"Error in streaming ({ffmpeg_err_m})", ffmpeg_err_m)
-            
-            # read standard playing error
-            if e: 
-                error_log_e(e)
-                print(f"Error occured while playing, {e}")
-                set_error(f"Error occured while playing", "Error")
-            print("song ended w/o error")
-
         # prevent replay
         if vc.is_playing(): 
             raise Exception("Already playing songs")
 
         next_dj_source = None
-        dj_next_recommend_count = 0
-        dj_recommend_delay = 2 # how many songs in between recommended songs
+        dj_next_suggestion_count = 0
+        dj_suggesting_delay = 2 # how many songs in between recommended songs
+        suggesting = False
         # queue loop
         while (len(self.playlist) > 0 or self.dj):
-            members = vc.channel.members
-            # activate dj when no song in queue
-            if self.dj and len(self.playlist) <= 0: 
-                if next_dj_source:
-                    source = next_dj_source
-                else:
-                    # find the next dj source
-                    source = await self.find_next_dj_source()
-                # error in youtube searching
-                if source is None: continue
-                
-                is_dj_source = True
-                player = "DJ"
-            else:
-                # get the song from the first of the queue
-                (source, queue_message, player) = self.playlist.pop(0)
-                # delete the corresponding queuing message
-                await queue_message.delete()
-                is_dj_source = False
+            # get next source from queue or dj
+            source, player, is_dj_source = await self.find_next_source(next_dj_source, suggesting)
 
             vid = source.vid
             self.nowPlaying = source
             # actual play
             self.djObj.djdb.add_history(vid, self.guild_id, self.guild_name, str(player))
             start = time.time() # start timer for duration
-            vc.play(source, after = lambda e: after_handler(e, self.set_stream_error) )
+            vc.play(source, after = lambda e: play_after_handler(e, self.set_stream_error) )
             
             # show playing views for controls
             await self.views.show_playing(is_dj_source, source, start_time = start, player = player)
             next_dj_source = None
 
-            # wait until the current track ends
+            # wait until the current track ends, also find next source
             while vc.is_playing(): 
                 a = time.time()
                 # decide to search from db or recommend from yt (from last song)
                 if next_dj_source == None:
-                    if dj_next_recommend_count >= dj_recommend_delay:
-                        next_dj_source = await self.find_next_dj_source(suggest_from = vid)
-                        dj_next_recommend_count = 0
+                    if dj_next_suggestion_count >= dj_suggesting_delay:
+                        next_dj_source, suggesting = await self.find_next_dj_source(suggest_from = vid)
+                        dj_next_suggestion_count = 0
                     else:
-                        next_dj_source = await self.find_next_dj_source()
-                        dj_next_recommend_count += 1
+                        next_dj_source, suggesting = await self.find_next_dj_source()
+                        dj_next_suggestion_count += 1
+                # update playbox duration
                 await self.views.update_playing(ViewUpdateType.DURATION)
                 b = time.time()
-                await asyncio.sleep(1 - (b - a))
+                # sleep for the extra time if the above operation finish under 1 sec
+                await asyncio.sleep(max(1 - (b - a), 0))
 
             # end timer and add/update duration
             end = time.time()
@@ -170,23 +131,48 @@ class VcControl():
             self.stream_err = None
 
             # auto leave when no one else in vchannel
-            if len(members) == 1:
+            members = vc.channel.members
+            if len(members) == 1 and self.djObj.bot.user in members:
                 await self.djObj.leave(self, self.guild_id)
                 return
 
         # end of playlist
         return 
 
+    async def find_next_source(self, next_dj_source, suggesting):
+        '''Get next play source from known dj source / new dj source / playlist '''
+        # activate dj when no song in queue
+        if self.dj and len(self.playlist) <= 0: 
+            if next_dj_source:
+                source = next_dj_source
+            else:
+                # find the next dj source
+                source, suggesting = await self.find_next_dj_source()
+            is_dj_source = True
+            player = "DJ" + (" Suggestion" if suggesting else "")
+        else:
+            # get the song from the first of the queue
+            (source, queue_message, player) = self.playlist.pop(0)
+            # delete the corresponding queuing message
+            await queue_message.delete()
+            is_dj_source = False
+        return (source, player, is_dj_source)
+
     async def find_next_dj_source(self, suggest_from = None):
         '''Find dj source from database / youtube suggestions'''
+        vid = None
         if suggest_from:
-            vid = yt_search_suggestions(suggest_from)[0].vID
-            
-            self.djObj.yt_search_and_insert(vid, use_vID = True)
-            vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
-        else:
+            suggestions_list = yt_search_suggestions(suggest_from)
+            if len(suggestions_list) > 0:
+                vid = suggestions_list[0].vID
+                self.djObj.yt_search_and_insert(vid, use_vID = True)
+                vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
+                suggesting = True
+
+        if vid is None:
             # query a random vid and compile source
             vid, vol = self.djObj.djdb.find_rand_song()
+            suggesting = False
         
         source = None
         while source == None:
@@ -198,7 +184,7 @@ class VcControl():
                 await self.mChannel.send(e.message)
                 self.djObj.djdb.remove_song(vid)
         
-        return source
+        return source, suggesting
 
     # skip current song
     async def skip(self, vc: discord.VoiceClient, author):
@@ -267,13 +253,15 @@ class VcControl():
     # -------------------- DISCONNECT ------------------- # 
     async def disconnectVC(self):
         # also manage all messages?
+        await self.set_dj_type(None)
+        await self.stop()
+        await self.vc.disconnect()
+
         q = random.choice(leaving_gif_search_list)
+        print("sending")
         await self.mChannel.send(
             get_tenor_gif(q),
             # handle in DJ.py
             components = [Views.reDJ_button()]
         )
-        await self.set_dj_type(None)
-        await self.stop()
-        await self.vc.disconnect()
         self.djObj.djdb.disconnect()

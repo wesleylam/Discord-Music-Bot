@@ -1,4 +1,4 @@
-from options import banned_list, banned_reason, baseboost_list, default_error_log, patch_note_log
+from options import *
 import datetime
 import traceback
 import pytz
@@ -131,3 +131,30 @@ def error_log_e(e):
             raise e
         except:
             traceback.print_exc(file=f)
+
+
+def play_after_handler(e, set_error):
+    # read ffmpeg error
+    ffmpeg_err_m = None
+    with open(ffmpeg_error_log, "r") as f:
+        # get to last line
+        for line in f.readlines():
+            pass
+        # check for possible error
+        if "403 Forbidden" in line[-50:]:
+            ffmpeg_err_m = "Access denied"
+        elif "Broken pipe" in line[-50:]:
+            ffmpeg_err_m = "Disrupted"
+
+    if ffmpeg_err_m:
+        message = f"ffmpeg error: {line}"
+        error_log(message)
+        print(message)
+        set_error(f"Error in streaming ({ffmpeg_err_m})", ffmpeg_err_m)
+    
+    # read standard playing error
+    if e: 
+        error_log_e(e)
+        print(f"Error occured while playing, {e}")
+        set_error(f"Error occured while playing", "Error")
+    print("song ended w/o error")
