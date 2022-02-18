@@ -1,5 +1,7 @@
+import os
 import discord
 from discord_components import Button, ButtonStyle
+from options import patch_note_log
 from helper import *
 from enum import Enum
 import time
@@ -49,10 +51,17 @@ class Views():
 
     # ------------------------------ PATCH NOTE VIEW -------------------------------- # 
     
-    def patch_note_box(patch_note, gif):
-        color=rand_color()
-        embed = discord.Embed(title = "Patch Note", color=color, description = patch_note)
+    def patch_note_box(gif):
+        # execute git log and store it in log
+        os.system(f'git log -10 --pretty=format:"%ad%x09%s" --date=short > {patch_note_log}')
+        # extract log 
+        notes = parse_patch_note_log()
+        color = rand_color()
+        embed = discord.Embed(title = "Patch Note", color=color)
+        for date, commit in notes.items():
+            embed.add_field(name = date, value = commit, inline=False)
         embed.set_image(url = gif)
+        embed.set_footer(text = "............................................................................................................................................................................................................................................................................................................................................")
         return embed
 
     # -------------------------------- QUEUE VIEW ---------------------------------- # 
@@ -297,7 +306,8 @@ class Views():
         )
 
     def reDJ_button():
-        return Button(style=ButtonStyle.blue, label="DJ again", id="reDJ")
+        # no guild id needed for this, but number needed for decomposing id
+        return Button(style=ButtonStyle.blue, label="DJ again", id="0_reDJ")
 
     def song_vol_up_button(self, vid):
         return self.djbot_component_manager.add_callback(

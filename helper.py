@@ -1,4 +1,4 @@
-from options import banned_list, banned_reason, baseboost_list, default_error_log
+from options import banned_list, banned_reason, baseboost_list, default_error_log, patch_note_log
 import datetime
 import traceback
 import pytz
@@ -72,6 +72,18 @@ def vid_to_thumbnail(vid):
 
 def rand_color():
     return random.randint(0, 16**6)
+
+def parse_patch_note_log(limit = 5):
+    notes = {} # date: commit 
+    with open(patch_note_log) as f:
+        for line in f.readlines():
+            tokens = line.split('\t')
+            if len(tokens) > 1 and ("ignore" not in tokens[1]):
+                notes[tokens[0]] = tokens[1]
+                if len(notes) >= limit:
+                    break
+
+    return notes
 
 
 # ----------------------------------------- TIME RELATED ----------------------------------------------- # 

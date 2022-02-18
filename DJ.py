@@ -54,18 +54,11 @@ class DJ(commands.Cog):
             self.djdb.connect()
             await vc.connect()
             if not silence:
-                # execute git log and store it in log
-                os.system(f'git log -5 --pretty=format:"%ad%x09%s" --date=short > {patch_note_log}')
-                # extract log 
-                notes = ""
-                with open(patch_note_log) as f:
-                    for line in f.readlines():
-                        notes += line
                 # get opening gif
                 q = random.choice(opening_gif_search_list)
                 gif = get_tenor_gif(q)
                 # make embed
-                embeded = Views.patch_note_box(notes, gif)
+                embeded = Views.patch_note_box(gif)
                 await ctx.send( embed = embeded)
                 
             # create new control instance, send current channel for further messaging
