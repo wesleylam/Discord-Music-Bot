@@ -5,6 +5,18 @@ import json
 import os
 from config import yt_API_key
 
+def get_yt_suggestions(vID, force_music = True):
+    categoryID_get = f"&videoCategoryId={10}"
+    url = f"https://youtube.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId={vID}&type=video&key={yt_API_key}"
+    if force_music: url += categoryID_get
+    
+    params = {
+        'Authorization': 'Bearer',
+        'Accept': 'application/json'
+    }
+    r = requests.get(url = url, params = params) 
+    return r.json() 
+
 def get_yt_results(q, use_vID = False, force_music = True):
     print(f"Using Youtube API: {q}")
 
@@ -65,7 +77,8 @@ def yt_search(q, use_vID = False):
         item = items[i]
         kind = (item['kind'].split('#')[1]) if use_vID else (item['id']['kind'].split('#')[1])
         videoID = q if use_vID else item['id'][kind + 'Id']
-        if kind == "video":
+        # if snippet does not exist, probably means the video is no longer available
+        if kind == "video" and "snippet" in item.keys():
             return SongInfo(
                 videoID, 
                 item['snippet']['title'], 
@@ -75,6 +88,31 @@ def yt_search(q, use_vID = False):
     
     return None
 
+
+def yt_search_suggestions(vID):
+    response = get_yt_suggestions(vID)
+
+    songs = []
+    items = response['items']
+    for i in range(len(items)):
+        item = items[i]
+        kind = item['id']['kind'].split('#')[1]
+        videoID = item['id'][kind + 'Id']
+        # if snippet does not exist, probably means the video is no longer available
+        if kind == "video" and "snippet" in item.keys():
+            s = SongInfo(
+                    videoID, 
+                    item['snippet']['title'], 
+                    item['snippet']['channelId'],
+                    item['snippet']['thumbnails']['default']['url'], 
+                )
+            songs.append(s)
+            print(s)
+    
+    return songs
+
 if __name__ == "__main__":
-    print(yt_search("test"))
+    songs = yt_search_suggestions("1fx1hh3m1Fw")
+    for song in songs: 
+        print(song)
     # 'https://youtube.googleapis.com/youtube/v3/playlistItems?playlistId='

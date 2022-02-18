@@ -100,6 +100,16 @@ class DJ(commands.Cog):
         # send search results in Views
         await self.scp_search_choice(ctx, s, force_music = False)
 
+    # COMMAND: playsearch
+    @commands.command(aliases=['ps', 'plays', 'psong', 'playsong'])
+    async def playsearch(self, ctx, *kwords):
+        '''Search songs in youtube and play a picked one'''
+        s = list(kwords)
+        if len(s) <= 0 or "".join(s) == "": # throw error when no arg given 
+            raise Exception("No search term(s) given")
+
+        # send search results in Views
+        await self.scp_search_choice(ctx, s, force_music = True)
 
     # COMMAND: meme
     @commands.command(aliases=['m'])
@@ -148,7 +158,7 @@ class DJ(commands.Cog):
             await self.compile_and_play(ctx, vid, vol = vol, insert = insert, loud = loud, baseboost = baseboost)
 
 
-    async def process_song_input(self, ctx, args, DBonly = False, newDJable = True):
+    async def process_song_input(self, ctx, args, DBonly = False, newDJable = True, search = False):
         '''
         Process song input (from link or search terms)
         return vid ONLY if passed url
@@ -173,7 +183,7 @@ class DJ(commands.Cog):
             else: 
                 vol = match[DJDB.Attr.SongVol]
         else: 
-            if DBonly:
+            if not search:
                 # case 2: find in query db (or query yt if none)
                 vid, vol = await self.scp_search(ctx, args, DBonly = DBonly, newDJable = newDJable)
             else:

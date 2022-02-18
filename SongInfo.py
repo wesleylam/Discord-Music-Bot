@@ -6,6 +6,9 @@ class SongInfo():
         self.channelID = channelID
         self.thumbnailURL = thumbnailURL
 
+    def __str__(self) -> str:
+        return self.stringify_info()
+
     def get_all_info(self):
         return self.vID, self.title, self.channelID
 

@@ -1,11 +1,14 @@
 import discord
 import asyncio
-from options import ffmpeg_error_log
+from options import ffmpeg_error_log, default_init_vol
 from Views import Views, ViewUpdateType
 from DJExceptions import DJBannedException
 from YTDLException import YTDLException
 from helper import error_log_e, error_log
+from DJDynamoDB import DJDB
 import time
+
+from ytAPIget import yt_search_suggestions
 
 class VcControl():
     def __init__(self, mChannel, djo, vc, guild) -> None:
@@ -100,21 +103,22 @@ class VcControl():
         if vc.is_playing(): 
             raise Exception("Already playing songs")
 
+        next_dj_source = None
+        dj_next_recommend_count = 0
+        dj_recommend_delay = 2 # how many songs in between recommended songs
         # queue loop
         while (len(self.playlist) > 0 or self.dj):
             members = vc.channel.members
             # activate dj when no song in queue
             if self.dj and len(self.playlist) <= 0: 
-                # query a random vid and compile source
-                vid, vol = self.djObj.djdb.find_rand_song()
+                if next_dj_source:
+                    source = next_dj_source
+                else:
+                    # find the next dj source
+                    source = await self.find_next_dj_source()
+                # error in youtube searching
+                if source is None: continue
                 
-                # must catch exception here, otherwise the play loop will end when yt error occur
-                try: source = await self.djObj.scp_compile(vid, vol)
-                # youtube download/extract error and banned song exception
-                except (YTDLException, DJBannedException) as e: 
-                    await self.mChannel.send(e.message)
-                    self.djObj.djdb.remove_song(vid)
-                    continue
                 is_dj_source = True
                 player = "DJ"
             else:
@@ -133,11 +137,22 @@ class VcControl():
             
             # show playing views for controls
             await self.views.show_playing(is_dj_source, source, start_time = start, player = player)
+            next_dj_source = None
 
             # wait until the current track ends
             while vc.is_playing(): 
-                await asyncio.sleep(1)
+                a = time.time()
+                # decide to search from db or recommend from yt (from last song)
+                if next_dj_source == None:
+                    if dj_next_recommend_count >= dj_recommend_delay:
+                        next_dj_source = await self.find_next_dj_source(suggest_from = vid)
+                        dj_next_recommend_count = 0
+                    else:
+                        next_dj_source = await self.find_next_dj_source()
+                        dj_next_recommend_count += 1
                 await self.views.update_playing(ViewUpdateType.DURATION)
+                b = time.time()
+                await asyncio.sleep(1 - (b - a))
 
             # end timer and add/update duration
             end = time.time()
@@ -159,7 +174,29 @@ class VcControl():
 
         # end of playlist
         return 
-                
+
+    async def find_next_dj_source(self, suggest_from = None):
+        '''Find dj source from database / youtube suggestions'''
+        if suggest_from:
+            vid = yt_search_suggestions(suggest_from)[0].vID
+            
+            self.djObj.yt_search_and_insert(vid, use_vID = True)
+            vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
+        else:
+            # query a random vid and compile source
+            vid, vol = self.djObj.djdb.find_rand_song()
+        
+        source = None
+        while source == None:
+            # must catch exception here, otherwise the play loop will end when yt error occur
+            try: 
+                source = await self.djObj.scp_compile(vid, vol)
+            # youtube download/extract error and banned song exception
+            except (YTDLException, DJBannedException) as e: 
+                await self.mChannel.send(e.message)
+                self.djObj.djdb.remove_song(vid)
+        
+        return source
 
     # skip current song
     async def skip(self, vc: discord.VoiceClient, author):
