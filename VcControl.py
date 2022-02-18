@@ -1,14 +1,16 @@
 import discord
 import asyncio
-from options import ffmpeg_error_log, default_init_vol
+from API.tenorAPIget import get_tenor_gif
+from options import ffmpeg_error_log, default_init_vol, leaving_gif_search_list
 from Views import Views, ViewUpdateType
 from DJExceptions import DJBannedException
 from YTDLException import YTDLException
 from helper import error_log_e, error_log
 from DJDynamoDB import DJDB
 import time
+import random
 
-from ytAPIget import yt_search_suggestions
+from API.ytAPIget import yt_search_suggestions
 
 class VcControl():
     def __init__(self, mChannel, djo, vc, guild) -> None:
@@ -265,6 +267,12 @@ class VcControl():
     # -------------------- DISCONNECT ------------------- # 
     async def disconnectVC(self):
         # also manage all messages?
+        q = random.choice(leaving_gif_search_list)
+        await self.mChannel.send(
+            get_tenor_gif(q),
+            # handle in DJ.py
+            components = [Views.reDJ_button()]
+        )
         await self.set_dj_type(None)
         await self.stop()
         await self.vc.disconnect()

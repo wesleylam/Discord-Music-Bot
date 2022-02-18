@@ -5,14 +5,15 @@ from discord_components import ComponentsBot
 
 from VcControl import VcControl
 from Views import Views
-from ytAPIget import yt_search, yt_search_all
+from API.ytAPIget import yt_search, yt_search_all
+from API.tenorAPIget import get_tenor_gif
 import youtube_dl
 from YTDLSource import YTDLSource, StaticSource
 from youtube_dl.utils import DownloadError
 
 from helper import *
 from config import *
-from options import ytdl_format_options, ffmpeg_options, ffmpeg_error_log, default_init_vol, loud_vol_factor
+from options import *
 from DJDynamoDB import DJDB
 from DJExceptions import DJDBException, DJBannedException, DJSongNotFoundException
 from YTDLException import YTDLException
@@ -52,6 +53,21 @@ class DJ(commands.Cog):
             vc = get_channel_to_join(ctx)
             self.djdb.connect()
             await vc.connect()
+            if not silence:
+                # execute git log and store it in log
+                os.system(f'git log -5 --pretty=format:"%ad%x09%s" --date=short > {patch_note_log}')
+                # extract log 
+                notes = ""
+                with open(patch_note_log) as f:
+                    for line in f.readlines():
+                        notes += line
+                # get opening gif
+                q = random.choice(opening_gif_search_list)
+                gif = get_tenor_gif(q)
+                # make embed
+                embeded = Views.patch_note_box(notes, gif)
+                await ctx.send( embed = embeded)
+                
             # create new control instance, send current channel for further messaging
             self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self, ctx.voice_client, ctx.guild)
         else: 

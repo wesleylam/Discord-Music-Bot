@@ -47,6 +47,14 @@ class Views():
         return f"{self.guild_id}_{linked_stringed_args}"
 
 
+    # ------------------------------ PATCH NOTE VIEW -------------------------------- # 
+    
+    def patch_note_box(patch_note, gif):
+        color=rand_color()
+        embed = discord.Embed(title = "Patch Note", color=color, description = patch_note)
+        embed.set_image(url = gif)
+        return embed
+
     # -------------------------------- QUEUE VIEW ---------------------------------- # 
 
     async def send_queue_message(self, vc, source):
@@ -81,7 +89,7 @@ class Views():
             components=[ buttons, ]
         )
 
-    # -------------------------------- SEARCH VIEW ---------------------------------- # 
+    # -------------------------------- SONG VIEW ---------------------------------- # 
     
     def song_box(song, title = None):
         color=rand_color()
@@ -288,8 +296,8 @@ class Views():
             lambda i: self.leave_callback()
         )
 
-    def reDJ_button(self):
-        return Button(style=ButtonStyle.blue, label="DJ again", id=self.BIgen("reDJ"))
+    def reDJ_button():
+        return Button(style=ButtonStyle.blue, label="DJ again", id="reDJ")
 
     def song_vol_up_button(self, vid):
         return self.djbot_component_manager.add_callback(
@@ -316,11 +324,6 @@ class Views():
         )
 
     async def leave_callback(self):
-        await self.mChannel.send(
-            f"Goodbye!",
-            # handle in DJ.py
-            components = [ self.reDJ_button() ]
-        )
         await self.vcControl.disconnectVC()
 
     async def switch_djable_callback(self, interaction, vc, vid, queue = False):

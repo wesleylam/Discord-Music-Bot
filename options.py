@@ -23,6 +23,8 @@ ffmpeg_error_log = "./ffreport.log"
 
 default_error_log = "./error_log.log"
 
+patch_note_log = "./patch_note.log"
+
 # volumes
 default_init_vol = 0.1
 loud_vol_factor = 5
@@ -34,6 +36,11 @@ banned_reason = "This song is banned"
 # baseboost songs keywords
 baseboost_list = []
 
+# opening gif list
+opening_gif_search_list = ["Hello"]
+
+# leaving gif list
+leaving_gif_search_list = ["Goodbye"]
 
 
 
