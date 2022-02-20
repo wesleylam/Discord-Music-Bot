@@ -1,8 +1,10 @@
+from operator import truediv
 from options import *
 import datetime
 import traceback
 import pytz
 import random
+import re
 
 # debug printing function 
 def help(o):
@@ -112,11 +114,39 @@ def readable_duration(sec):
     s += f"{sec}"
     return s
 
+def ISO8601_to_duration(ISO8601 : str) -> int:
+    '''Convert ISO8601 time string (used in youtube duration) into duration in seconds, eg: PT1H15M33S => 933'''
+    tokens = ISO8601.split('T')
+    p, temp = tokens[0], tokens[1]
+    hour, min, sec = 0,0,0
+    if 'H' in temp:
+        tokens = temp.split('H')
+        hour, temp = int(tokens[0]), tokens[1]
+    if 'M' in temp:
+        tokens = temp.split('M')
+        min, temp = int(tokens[0]), tokens[1]
+    if 'S' in temp:
+        tokens = temp.split('S')
+        sec, temp = int(tokens[0]), tokens[1]
+
+    return hour * 60 * 60 + min * 60 + sec
+
+
+def song_is_live(title):
+    title = title.lower()
+    tokens = title.split()
+    # re.search(".*live.*", title)
+    if ("(live)" in title) or ("live!" in title) or ("live" in tokens) or ("concert" in tokens):
+        return True 
+    return False
+
 
 # ----------------------------------------- ERROR LOGGING -------------------------------------------- # 
 
 def error_log(err_m):
+    '''Simply log the error to error log'''
     now = get_time()
+    print("Logging error: " + err_m)
     with open(default_error_log, "a") as f:
         m = f"{now}: {err_m}\n"
         f.write(m)
@@ -158,3 +188,7 @@ def play_after_handler(e, set_error):
         print(f"Error occured while playing, {e}")
         set_error(f"Error occured while playing", "Error")
     print("song ended w/o error")
+
+if __name__ == "__main__":
+    a = ISO8601_to_duration('PT15M33S')
+    print(a)

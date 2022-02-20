@@ -5,8 +5,10 @@ from options import ffmpeg_error_log, default_init_vol, leaving_gif_search_list
 from Views import Views, ViewUpdateType
 from DJExceptions import DJBannedException
 from YTDLException import YTDLException
-from helper import error_log_e, error_log, play_after_handler
+from helper import error_log_e, error_log, is_banned, play_after_handler, song_is_live
 from DJDynamoDB import DJDB
+from SongInfo import SongInfo
+from API.ytAPIget import *
 import time
 import random
 
@@ -83,11 +85,10 @@ class VcControl():
         next_dj_source = None
         dj_next_suggestion_count = 0
         dj_suggesting_delay = 2 # how many songs in between recommended songs
-        suggesting = False
         # queue loop
         while (len(self.playlist) > 0 or self.dj):
             # get next source from queue or dj
-            source, player, is_dj_source = await self.find_next_source(next_dj_source, suggesting)
+            source, player, is_dj_source = await self.find_next_source(next_dj_source)
 
             vid = source.vid
             self.nowPlaying = source
@@ -106,10 +107,12 @@ class VcControl():
                 # decide to search from db or recommend from yt (from last song)
                 if next_dj_source == None:
                     if dj_next_suggestion_count >= dj_suggesting_delay:
-                        next_dj_source, suggesting = await self.find_next_dj_source(suggest_from = vid)
+                        # dj from yt suggestion
+                        next_dj_source = await self.find_next_dj_source(suggest_from = vid)
                         dj_next_suggestion_count = 0
                     else:
-                        next_dj_source, suggesting = await self.find_next_dj_source()
+                        # dj from DJDB
+                        next_dj_source = await self.find_next_dj_source(suggest_from = None)
                         dj_next_suggestion_count += 1
                 # update playbox duration
                 await self.views.update_playing(ViewUpdateType.DURATION)
@@ -139,15 +142,17 @@ class VcControl():
         # end of playlist
         return 
 
-    async def find_next_source(self, next_dj_source, suggesting):
+    async def find_next_source(self, next_dj_source):
         '''Get next play source from known dj source / new dj source / playlist '''
         # activate dj when no song in queue
         if self.dj and len(self.playlist) <= 0: 
             if next_dj_source:
                 source = next_dj_source
             else:
-                # find the next dj source
-                source, suggesting = await self.find_next_dj_source()
+                # find the next dj source WITHIN DJDB (Safe DJ)
+                source = await self.find_next_dj_source(suggest_from = None)
+            
+            suggesting = source.suggesting
             is_dj_source = True
             player = "DJ" + (" Suggestion" if suggesting else "")
         else:
@@ -160,11 +165,12 @@ class VcControl():
 
     async def find_next_dj_source(self, suggest_from = None):
         '''Find dj source from database / youtube suggestions'''
+        suggesting = False
         vid = None
         if suggest_from:
             suggestions_list = yt_search_suggestions(suggest_from)
             if len(suggestions_list) > 0:
-                vid = suggestions_list[0].vID
+                vid = VcControl.find_suitable_suggestion(suggest_from, suggestions_list)
                 self.djObj.yt_search_and_insert(vid, use_vID = True)
                 vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
                 suggesting = True
@@ -172,19 +178,50 @@ class VcControl():
         if vid is None:
             # query a random vid and compile source
             vid, vol = self.djObj.djdb.find_rand_song()
-            suggesting = False
         
+        # compile source
         source = None
-        while source == None:
-            # must catch exception here, otherwise the play loop will end when yt error occur
-            try: 
-                source = await self.djObj.scp_compile(vid, vol)
-            # youtube download/extract error and banned song exception
-            except (YTDLException, DJBannedException) as e: 
-                await self.mChannel.send(e.message)
-                self.djObj.djdb.remove_song(vid)
+        # must catch exception here, otherwise the play loop will end when yt error occur
+        try: 
+            source = await self.djObj.scp_compile(vid, vol)
+            source.suggesting = suggesting
+        # youtube download/extract error
+        except (YTDLException) as e: 
+            error_log(e.message)
+            self.djObj.djdb.remove_song(vid)
         
-        return source, suggesting
+        return source
+
+    def find_suitable_suggestion(original_vid, songs, max_mins = 10) -> str:
+        '''
+        Find the most suitable suggestion from list
+        original_vid: str       - original vID where suggested songs are from
+        songs: list(SongInfo)   - list of suggested songs
+        max_mins: int           - maximum minutes of the suggested song should have
+        Returns vID: str
+        '''
+        new_vid = None
+
+        for song in songs:
+            # 1. the song cant be banned
+            if is_banned(song.title):
+                continue
+            
+            # 2. the song cant be over 10 mins
+            #  individual (detailed) search
+            song_detailed = yt_search(song.vID, use_vID = True) # TODO: update and insert detailed song info (in idle operation?)
+            if song_detailed.duration > (max_mins * 60):
+                continue
+
+            # 3. the song should have similar title
+            if song_is_live(song.title):
+                continue
+
+            # 3. the song should have similar title
+            print(song)
+            return song.vID
+
+        return new_vid
 
     # skip current song
     async def skip(self, vc: discord.VoiceClient, author):
