@@ -56,6 +56,16 @@ class DJ(commands.Cog):
 # -------------------------------------------------------------------------------------------- # 
 # ------------------------------------- VOICE CONTROL ---------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
+    @commands.command(aliases=['patch', 'note'])
+    async def patchnote(self, ctx):
+        '''Show the newest patch note'''
+        # get gif
+        q = random.choice(opening_gif_search_list)
+        gif = get_tenor_gif(q)
+        # make embed
+        embeded = Views.patch_note_box(gif)
+        await ctx.send( embed = embeded)
+
     # -------------------- Join voice channel -------------------- #
     @commands.command()
     async def join(self, ctx, silence = False):
@@ -66,12 +76,8 @@ class DJ(commands.Cog):
             self.djdb.connect()
             await vc.connect()
             if not silence:
-                # get opening gif
-                q = random.choice(opening_gif_search_list)
-                gif = get_tenor_gif(q)
-                # make embed
-                embeded = Views.patch_note_box(gif)
-                await ctx.send( embed = embeded)
+                # show patch note
+                await self.patchnote(ctx)
                 
             # create new control instance, send current channel for further messaging
             self.vcControls[ctx.guild.id] = VcControl(ctx.channel, self, ctx.voice_client, ctx.guild)
