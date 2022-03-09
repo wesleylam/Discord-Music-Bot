@@ -1,4 +1,5 @@
 from DJExceptions import DJDBException
+from botocore.exceptions import ClientError
 from config import dynamodb_table, dynamodb_hist_table
 from options import default_init_vol
 from SongInfo import SongInfo
@@ -264,9 +265,9 @@ class DJDB():
     def find_djable(self, vID) -> bool:
         try: 
             return self.db_get(vID, [DJDB.Attr.DJable])[DJDB.Attr.DJable]
-        except DJDBException as e:
-            error_log("cannot find djable: " + e.message)
-            return False
+        except (DJDBException, ClientError) as e:
+            error_log("cannot find djable: " + str(e.message if hasattr(e, 'message') else e))
+            return None
 
     def find_duration(self, vID) -> int:
         try: 
