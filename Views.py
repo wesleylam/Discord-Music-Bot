@@ -160,7 +160,9 @@ class Views():
 
     # update play box info
     async def update_playing(self, update: ViewUpdateType, extended = False):
-        assert self.playbox is not None, "Cannot update without playbox"
+        if self.playbox == None: 
+            error_log("Cannot update without playbox")
+            return 
         
         if update == ViewUpdateType.REPOST:
             # repost

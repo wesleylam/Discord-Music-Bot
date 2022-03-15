@@ -123,8 +123,11 @@ class VcControl():
 
             # end timer and add/update duration
             end = time.time()
-            if self.skip_author is None: 
+            if self.skip_author is None:
                 self.djObj.djdb.update_duration(vid, end - start)
+            else:
+                if next_dj_source and next_dj_source.suggesting:
+                    next_dj_source = None
             if self.stream_err is not None: 
                 await self.notify(self.stream_err)
 
@@ -177,7 +180,7 @@ class VcControl():
                 # None: means djdb does not contain that vid (new song, play it with non-djable default)
                 if djable or djable is None:
                     vid = found_vid
-                    self.djObj.yt_search_and_insert(vid, use_vID = True, newDJable = False)
+                    self.djObj.yt_search_and_insert(vid, use_vID = True, newDJable = True)
                     vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
                     suggesting = True
 
@@ -296,7 +299,7 @@ class VcControl():
     # -------------------- DISCONNECT ------------------- # 
     async def disconnectVC(self):
         # also manage all messages?
-        await self.set_dj_type(None)
+        # await self.set_dj_type(None)
         await self.stop()
         await self.vc.disconnect()
 
