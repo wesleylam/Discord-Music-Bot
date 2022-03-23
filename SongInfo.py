@@ -7,6 +7,7 @@ class SongInfo():
         self.thumbnailURL = thumbnailURL
         # in seconds
         self.duration = duration
+        self.inserted = None # unknown state
 
     def __str__(self) -> str:
         return self.stringify_info()

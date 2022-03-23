@@ -208,7 +208,8 @@ class DJ(commands.Cog):
                 self.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
                 vol = None
             else: 
-                vol = match[DJDB.Attr.SongVol]
+                if DBonly: raise DJSongNotFoundException(f"No match found for {vid}")
+                else: vol = match[DJDB.Attr.SongVol]
         else: 
             if not search:
                 # case 2: find in query db (or query yt if none)
@@ -289,7 +290,9 @@ class DJ(commands.Cog):
             if use_vID: raise DJSongNotFoundException(f"No video found: {vid_to_url(search_term)}")
             else: raise DJSongNotFoundException(f"Nothing found in video form: {search_term}")
 
-        if insert_after: self.djdb.insert_song(info, newDJable = newDJable)
+        if insert_after: 
+            inserted = self.djdb.insert_song(info, newDJable = newDJable)
+            info.inserted = inserted
         return info
 
 

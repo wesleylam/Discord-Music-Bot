@@ -174,7 +174,7 @@ class DJDB():
         song = self.find_song_match(songInfo.vID)
         if song:
             # skip if song exist
-            return  
+            return False
         print(f"Song not found {songInfo.vID} in DB, inserting to DB")
 
         # get all info and default parameters
@@ -188,6 +188,7 @@ class DJDB():
 
         # add to db
         self.table.put_item(Item = item)
+        return True
 
     # remove song and all its queries
     def remove_song(self, vid):

@@ -127,7 +127,12 @@ class VcControl():
                 self.djObj.djdb.update_duration(vid, end - start)
             else:
                 if next_dj_source and next_dj_source.suggesting:
+                    # remove the suggested song if new
+                    if next_dj_source.inserted:
+                        self.djdb.remove_song(next_dj_source.vid)
+                        print("Removing suggested new song due to skipped:", next_dj_source.vid)
                     next_dj_source = None
+                    dj_next_suggestion_count = dj_suggesting_delay
             if self.stream_err is not None: 
                 await self.notify(self.stream_err)
 
@@ -170,6 +175,7 @@ class VcControl():
     async def find_next_dj_source(self, suggest_from = None):
         '''Find dj source from database / youtube suggestions'''
         suggesting = False
+        inserted = False
         vid = None
         if suggest_from:
             suggestions_list = yt_search_suggestions(suggest_from)
@@ -180,7 +186,8 @@ class VcControl():
                 # None: means djdb does not contain that vid (new song, play it with non-djable default)
                 if djable or djable is None:
                     vid = found_vid
-                    self.djObj.yt_search_and_insert(vid, use_vID = True, newDJable = True)
+                    info = self.djObj.yt_search_and_insert(vid, use_vID = True, newDJable = True)
+                    inserted = info.inserted
                     vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
                     suggesting = True
 
@@ -194,6 +201,7 @@ class VcControl():
         try: 
             source = await self.djObj.scp_compile(vid, vol)
             source.suggesting = suggesting
+            source.inserted = inserted
         # youtube download/extract error
         except (YTDLException) as e: 
             error_log(e.message)
@@ -209,8 +217,8 @@ class VcControl():
         max_mins: int           - maximum minutes of the suggested song should have
         Returns vID: str
         '''
-        new_vid = None
 
+        suitable = []
         for song in songs:
             # 1. the song cant be banned
             if is_banned(song.title):
@@ -227,10 +235,13 @@ class VcControl():
                 continue
 
             # 3. the song should have similar title
-            print(song)
-            return song.vID
+            print("suitable song: " + str(song))
+            suitable.append(song.vID)
 
-        return new_vid
+        if len(suitable) > 0:
+            return random.choice(suitable)
+        else:
+            return None
 
     # skip current song
     async def skip(self, vc: discord.VoiceClient, author):
