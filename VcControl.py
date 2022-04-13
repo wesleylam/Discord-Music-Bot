@@ -206,6 +206,11 @@ class VcControl():
         except (YTDLException) as e: 
             error_log(e.message)
             self.djObj.djdb.remove_song(vid)
+        # banned
+        except (DJBannedException) as e:
+            await self.notify(e.message)
+            error_log(e.message)
+            # self.djObj.djdb.remove_song(vid)
         
         return source
 
