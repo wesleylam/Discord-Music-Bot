@@ -1,4 +1,5 @@
 import os
+from aiohttp import ClientError
 import discord
 from discord_components import Button, ButtonStyle
 from options import patch_note_log
@@ -6,6 +7,7 @@ from helper import *
 from enum import Enum
 import time
 from DJDynamoDB import DJDB
+from aiohttp.client_exceptions import ClientOSError
 
 class ViewUpdateType(Enum):
     REPOST = 1
@@ -178,10 +180,13 @@ class Views():
                 components = self.playbox_components(extended = extended)
             )
         elif update == ViewUpdateType.DURATION:
-            # edit duration
-            await self.playbox.edit(
-                self.update_duration(self.playbox.content),
-            )
+            try:
+                # edit duration
+                await self.playbox.edit(
+                    self.update_duration(self.playbox.content),
+                )
+            except ClientOSError as e:
+                error_log_e(e)
 
         else: raise Exception(f"Unknown udpate type: {update}")
 
