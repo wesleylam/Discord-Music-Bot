@@ -181,15 +181,16 @@ class VcControl():
             suggestions_list = yt_search_suggestions(suggest_from)
             if len(suggestions_list) > 0:
                 found_vid = VcControl.find_suitable_suggestion(suggest_from, suggestions_list)
-                # only suggest this if it is djable
-                djable = self.djdb.find_djable(found_vid)
-                # None: means djdb does not contain that vid (new song, play it with non-djable default)
-                if djable or djable is None:
-                    vid = found_vid
-                    info = self.djObj.yt_search_and_insert(vid, use_vID = True, newDJable = True)
-                    inserted = info.inserted
-                    vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
-                    suggesting = True
+                if found_vid:
+                    # only suggest this if it is djable
+                    djable = self.djdb.find_djable(found_vid)
+                    # None: means djdb does not contain that vid (new song, play it with non-djable default)
+                    if djable or djable is None:
+                        vid = found_vid
+                        info = self.djObj.yt_search_and_insert(vid, use_vID = True, newDJable = True)
+                        inserted = info.inserted
+                        vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
+                        suggesting = True
 
         if vid is None:
             # query a random vid and compile source
