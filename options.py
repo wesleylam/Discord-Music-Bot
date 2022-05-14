@@ -30,8 +30,7 @@ default_init_vol = 0.1
 loud_vol_factor = 5
 
 # banned keyword list and reasons
-banned_list = []
-banned_reason = "This song is banned"
+banned_list = { "This song is banned": [] }
 
 # baseboost songs keywords
 baseboost_list = []

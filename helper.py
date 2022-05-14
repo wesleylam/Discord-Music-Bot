@@ -18,9 +18,10 @@ def is_banned(title: str):
     # IDEA: sorted list to reduce searching in half
     # MORE OPTIMISED: refer to searching complexity
     title = title.lower()
-    reason = banned_reason
-    for i in banned_list:
-        if i.lower() in title: return reason
+    for (reason, keywords) in banned_list.items():
+        for key in keywords:
+            if key.lower() in title: 
+                return reason
     return None
     
 # determine is the song need to be trolled using its title: return bool
