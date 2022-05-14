@@ -22,6 +22,12 @@ class DJDB():
         SongVol = "SongVol"
         Duration = "Duration"
         Qcount = "Qcount"
+        
+        def get_all():
+            return [DJDB.Attr.vID, DJDB.Attr.Title, DJDB.Attr.STitle, 
+            DJDB.Attr.ChannelID, DJDB.Attr.Queries, DJDB.Attr.DJable, 
+            DJDB.Attr.SongVol, DJDB.Attr.Duration, DJDB.Attr.Qcount, ]
+
     class Attr_hist():
         Time = "Time" # KEY
         vID = "vID"
@@ -339,25 +345,30 @@ class DJDB():
             return None
 
 
-    def list_all_songs(self, dj=None, top = 10):
-        needed_attr = [ DJDB.Attr.Title ]
-        needed_attr_str = ", ".join( needed_attr )
-        if dj is None:
-            response = self.table.scan(
-                ProjectionExpression = needed_attr_str
-            )
-        else:
-            response = self.table.scan(
-                FilterExpression = Attr(DJDB.Attr.DJable).eq(dj),
-                ProjectionExpression = needed_attr_str
-            )
+    def list_all_songs(self, dj = None, top = 10, needed_attr = None, return_song_type = list):
+
+        scan_params = {}
+
+        if dj is not None:
+            scan_params["FilterExpression"] = Attr(DJDB.Attr.DJable).eq(dj)
+        
+        # get all attr if not specified
+        if needed_attr is not None and len(needed_attr) > 0:
+            needed_attr_str = ", ".join( needed_attr )
+            scan_params["ProjectionExpression"] = needed_attr_str
+
+        response = self.table.scan(**scan_params)
         items = response['Items'] # items: list of dict
 
         if len(items) <= 0:
             # no songs at all
             return None
         else:
-            return [ [ item[a] for a in needed_attr ] for item in items[:top] ]
+            topItems = items if top is None else items[:top]
+            if return_song_type == list: # list of list
+                return [ [ item[a] for a in needed_attr ] for item in topItems ]
+            else: # list of dictionary
+                return topItems
             
 
     # search songs by title and queries
@@ -399,19 +410,23 @@ class DJDB():
                 # skip songs matched title
                 if item[DJDB.Attr.vID] in title_searched_vids:
                     continue
-
-                for song_query in item[DJDB.Attr.Queries]:
-                    # match query
-                    if any(word in song_query for word in query_words):
-                        query_searched_songs.append( 
-                            SongInfo(
-                                item[DJDB.Attr.vID], 
-                                f"{item[DJDB.Attr.Title]} [{'/'.join(song_query)}]", 
-                                item[DJDB.Attr.ChannelID], 
-                                vid_to_thumbnail(item[DJDB.Attr.vID])
+                
+                if DJDB.Attr.Queries in item:
+                    for song_query in item[DJDB.Attr.Queries]:
+                        # match query
+                        if any(word in song_query for word in query_words):
+                            query_searched_songs.append( 
+                                SongInfo(
+                                    item[DJDB.Attr.vID], 
+                                    f"{item[DJDB.Attr.Title]} [{'/'.join(song_query)}]", 
+                                    item[DJDB.Attr.ChannelID], 
+                                    vid_to_thumbnail(item[DJDB.Attr.vID])
+                                )
                             )
-                        )
-                        break
+                            break
+                else:
+                    print(f"no queries in item: ")
+                    print(item)
 
             # no match
             return title_searched_songs + query_searched_songs
@@ -428,6 +443,7 @@ class DJDB():
         # add to db
         self.hist_table.put_item(Item = item)
 
+    # get top history ranked by times played
     def get_hist_rank(self, serverID = None, dj = False, top = 20):
         filter = None
         if serverID: 

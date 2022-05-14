@@ -520,7 +520,7 @@ class DJ(commands.Cog):
     @commands.command()
     async def listdj(self, ctx, *args):
         '''List 10 djable songs'''
-        songs = self.djdb.list_all_songs(dj = True)
+        songs = self.djdb.list_all_songs(dj = True, needed_attr = [DJDB.Attr.Title])
         await self.list(ctx, display_list = songs, title = "List 10 djable songs", none_message = "No song found")
 
 
@@ -528,7 +528,7 @@ class DJ(commands.Cog):
     @commands.command()
     async def listnotdj(self, ctx, *args):
         '''List 10 not djable songs'''
-        songs = self.djdb.list_all_songs(dj = False)
+        songs = self.djdb.list_all_songs(dj = False, needed_attr = [DJDB.Attr.Title])
         await self.list(ctx, display_list = songs, title = "List 10 not djable songs", none_message = "No song found")
 
     # COMMAND: search
