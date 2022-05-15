@@ -192,28 +192,37 @@ class VcControl():
                         vol = self.djObj.djdb.db_get(vid, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
                         suggesting = True
 
-        if vid is None:
-            # query a random vid and compile source
-            vid, vol = self.djObj.djdb.find_rand_song()
-        
-        # compile source
+        # compile source with maximum attempt
         source = None
-        # must catch exception here, otherwise the play loop will end when yt error occur
-        try: 
-            source = await self.djObj.scp_compile(vid, vol)
-            source.suggesting = suggesting
-            source.inserted = inserted
-        # youtube download/extract error
-        except (YTDLException) as e: 
-            error_log(e.message)
-            self.djObj.djdb.remove_song(vid)
-        # banned
-        except (DJBannedException) as e:
-            await self.notify(e.message)
-            error_log(e.message)
-            # self.djObj.djdb.remove_song(vid)
+        attempt = 0
+        max_attempt = 10
+        while source == None and attempt < max_attempt: 
+            attempt += 1
+
+            # if not suggestion OR suggestion failed OR compile fail (attempt >= 1)
+            # do normal find random song from DJDB
+            if vid is None or attempt >= 1:
+                # query a random vid and compile source
+                vid, vol = self.djdb.find_rand_song()
+
+            # must catch exception here, otherwise the play loop will end when yt error occur
+            try: 
+                source = await self.djObj.scp_compile(vid, vol)
+                source.suggesting = suggesting
+                source.inserted = inserted
+            # youtube download/extract error
+            except (YTDLException) as e: 
+                error_log(f"Error compiling {vid} (Attempt {attempt}): " + e.message)
+            # banned 
+            except (DJBannedException) as e:
+                await self.notify(e.message)
+                error_log(f"Error compiling {vid} (Attempt {attempt}): " + e.message)
+                # self.djObj.djdb.remove_song(vid)
         
-        return source
+        if source:
+            return source
+        else:
+            raise Exception(f"Attempted compile {vid} {max_attempt} times, but failed")
 
     def find_suitable_suggestion(original_vid, songs, max_mins = 10) -> str:
         '''
