@@ -734,6 +734,7 @@ if __name__ == "__main__":
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
 
     # for voice client to work: you need opus and ffmpeg
+    # NOT needed for windows environment
     discord.opus.load_opus(opus_dir)
 
     # initialise ytdl from youtube_dl library

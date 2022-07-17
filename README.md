@@ -8,7 +8,7 @@ Built using Python 3.7.7 with AWS DynamoDB
 - discord.py[voice] (pycparser, cffi, six, PyNaCl)
 - youtube-dl
 - ffmpeg
-- opus
+- opus (Not required in windows environment: https://discordpy.readthedocs.io/en/latest/api.html#discord.opus.load_opus)
 - pytz (timezone)
 
 ## Packages install
