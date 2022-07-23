@@ -357,7 +357,7 @@ class DJ(commands.Cog):
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
     # COMMAND: nowplaying
-    @commands.command(aliases = ['np'])
+    @commands.command(aliases = ['np', 'now'])
     async def nowplaying(self, ctx):
         '''Redisplay nowplaying board w/ controls'''
         await self.vcControls[ctx.guild.id].display_nowplaying()
@@ -735,7 +735,7 @@ if __name__ == "__main__":
 
     # for voice client to work: you need opus and ffmpeg
     # NOT needed for windows environment
-    discord.opus.load_opus(opus_dir)
+    # discord.opus.load_opus(opus_dir)
 
     # initialise ytdl from youtube_dl library
     ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
