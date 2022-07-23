@@ -20,8 +20,10 @@ def is_banned(title: str):
     title = title.lower()
     for (reason, keywords) in banned_list.items():
         for key in keywords:
-            if key.lower() in title: 
-                return reason
+            words = re.findall(f"[a-zA-Z]*", title)
+            for word in words:
+                if word == key.lower():
+                    return reason
     return None
     
 # determine is the song need to be trolled using its title: return bool
@@ -117,7 +119,10 @@ def readable_duration(sec):
 
 def ISO8601_to_duration(ISO8601 : str) -> int:
     '''Convert ISO8601 time string (used in youtube duration) into duration in seconds, eg: PT1H15M33S => 933'''
-    tokens = ISO8601.split('T')
+    if 'T' in ISO8601:
+        tokens = ISO8601.split('T')
+    else:
+        tokens = ISO8601.split('P')
     p, temp = tokens[0], tokens[1]
     hour, min, sec = 0,0,0
     if 'H' in temp:
