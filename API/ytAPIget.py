@@ -16,10 +16,9 @@ def get_yt_suggestions(vID, force_music = True):
     r = requests.get(url = url, params = params) 
     return r.json() 
 
-def get_yt_results(q, use_vID = False, force_music = True):
+def get_yt_results(q, use_vID = False, force_music = True, max_results = 10):
     print(f"Using Youtube API: {q}")
 
-    max_results = 10
     if use_vID:
         url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&id={q}&key={yt_API_key}"
         print("Searching video with vID:", q)
@@ -46,7 +45,7 @@ def yt_search_all(q, n = 5, force_music = True):
     return yt_search(q, False, force_music = force_music, find_all = True, find_all_limit = n)
 
 def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all_limit = 5):
-    response = get_yt_results(q, use_vID = use_vID, force_music = force_music)
+    response = get_yt_results(q, use_vID = use_vID, force_music = force_music, max_results = find_all_limit)
 
     songs = []
     items = response['items']
