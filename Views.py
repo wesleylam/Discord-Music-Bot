@@ -194,7 +194,7 @@ class Views():
         vc, vid = self.vc, self.vcControl.nowPlaying.vid
         btns = [
             self.switch_djable_button(vc, vid),
-            self.remove_button(vc, vid),
+            self.skip_button(vc, vid),
             self.switch_dj_button(), 
             self.leave_button(),
             self.song_info_button(vc, vid),
@@ -277,7 +277,13 @@ class Views():
     def encore_button(self, vc, vid, label = "Encore", style = ButtonStyle.blue):
         return Button(style=style, label=label, id=self.BIgen("encore", vid))
 
-    def remove_button(self, vc, vid, label = "Skip"):
+    def skip_button(self, vc, vid, label = "Skip"):
+        return self.djbot_component_manager.add_callback(
+            Button(style=ButtonStyle.red, label=label, id=self.BIgen(label, vid)), 
+            lambda i: self.skip_callback(i, vc)
+        )
+
+    def remove_button(self, vc, vid, label = "Remove"):
         return self.djbot_component_manager.add_callback(
             Button(style=ButtonStyle.red, label=label, id=self.BIgen(label, vid)), 
             lambda i: self.remove_callback(i, vc, vid)
@@ -331,6 +337,8 @@ class Views():
     async def switch_dj_callback(self, interaction):
         await self.vcControl.set_dj_type(None if self.vcControl.dj else True)
 
+    async def skip_callback(self, interaction, vc):
+        await self.vcControl.skip(vc, interaction.author)
 
     async def remove_callback(self, interaction, vc, vid):
         await self.vcControl.remove_track(vc, vid, interaction.author, vid=True)

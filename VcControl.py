@@ -281,11 +281,6 @@ class VcControl():
             if exact: return k == target
             else: return k in target
 
-        if match(key, self.nowPlaying):
-            await self.skip(vc, author)
-            # if not silent: await self.notify("Removed: " + self.nowPlaying.title)
-            return self.nowPlaying.url
-
         for i, (s, queue_message, player) in enumerate(self.playlist): 
             if match(key, s):
                 # delete playlist entry and the queue message
