@@ -31,6 +31,7 @@ class VcControl():
 
         # active display messages
         self.playlist = [] # [(source, m), (source, m) ....]
+        self.isPlaying = False
         self.views = Views(mChannel, vc, self, self.guild_id)
 
     # ------------------------- SETTER / UPDATER ------------------------- # 
@@ -73,8 +74,8 @@ class VcControl():
         else:
           self.playlist.append( (source, queue_message, player) ) 
         
-        # initialise player if its not playing (dj not on AND playlist only the one just added)
-        if (self.dj is not None) and (len(self.playlist) <= 1):
+        # initialise player if its not already playing
+        if not self.isPlaying:
             await self.next()
 
     ###  Main playing function  ###
@@ -88,6 +89,7 @@ class VcControl():
         next_dj_source = None
         dj_next_suggestion_count = 0
         dj_suggesting_delay = 2 # how many songs in between recommended songs
+        self.isPlaying = True
         # queue loop
         while (len(self.playlist) > 0 or self.dj):
             # get next source from queue or dj
@@ -150,7 +152,8 @@ class VcControl():
                 await self.djObj.leave(self, self.guild_id)
                 return
 
-        # end of playlist
+        # end of playlist / end of dj
+        self.isPlaying = False
         return 
 
     async def find_next_source(self, next_dj_source):
