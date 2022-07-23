@@ -65,6 +65,7 @@ class VcControl():
     # ---------------------------- CONTROLS --------------------------- # 
     async def add(self, vc: discord.VoiceClient, source, player, insert = False):
         print(source.title, source.vid, source.url)
+
         # append source/queue_item to playlist
         queue_message = await self.views.send_queue_message(vc, source)
         if insert:
@@ -72,7 +73,8 @@ class VcControl():
         else:
           self.playlist.append( (source, queue_message, player) ) 
         
-        if not vc.is_playing(): 
+        # initialise player if its not playing (dj not on AND playlist only the one just added)
+        if (self.dj is not None) and (len(self.playlist) <= 1):
             await self.next()
 
     ###  Main playing function  ###
