@@ -153,7 +153,7 @@ def error_log(err_m):
     '''Simply log the error to error log'''
     now = get_time()
     print("Logging error: " + err_m)
-    with open(default_error_log, "a") as f:
+    with open(default_error_log, "a", encoding="utf-8") as f:
         m = f"{now}: {err_m}\n"
         f.write(m)
 
