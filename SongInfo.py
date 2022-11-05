@@ -1,3 +1,4 @@
+from helper import default_init_vol
 from DBFields import SongAttr
 class SongInfo():
 
@@ -5,6 +6,7 @@ class SongInfo():
         for attr in SongAttr.get_all():
             setattr(self, attr, None)
             
+        setattr(self, SongAttr.SongVol, default_init_vol)
         
         setattr(self, SongAttr.vID, vID)
         setattr(self, SongAttr.Title, title)
@@ -18,14 +20,14 @@ class SongInfo():
         return self.stringify_info()
 
     def get_all_info(self):
-        return self.vID, self.title, self.channelID
+        return getattr(self, SongAttr.vID), getattr(self, SongAttr.Title), getattr(self, SongAttr.ChannelID)
 
     def stringify_info(self):
         return ", ".join([f"\"{i}\"" for i in self.get_all_info()])
     
     def dictify_info(self):
         return {
-            "vID": self.vID,
-            "Title": self.title,
-            "ChannelID": self.channelID
+            "vID": getattr(self, SongAttr.vID),
+            "Title": getattr(self, SongAttr.Title),
+            "ChannelID": getattr(self, SongAttr.ChannelID)
         }

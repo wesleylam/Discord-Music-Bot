@@ -5,6 +5,7 @@ from API.ytAPIget import yt_search, yt_search_all
 from YTDLSource import YTDLSource, StaticSource
 from youtube_dl.utils import DownloadError
 import youtube_dl
+from DBFields import SongAttr
 from options import ytdl_format_options
 import discord
 
@@ -25,10 +26,12 @@ class SourceCompile():
         songInfo = SourceCompile.process_song_input(args, newDJable = newDJable)
         
         # DB: INC Qcount
-        SourceCompile.djdb.increment_qcount(songInfo.vID)
+        SourceCompile.djdb.increment_qcount(getattr(songInfo, SongAttr.vID))
 
         # 2. compile
-        source = SourceCompile.scp_compile(songInfo.vID, songInfo.SongVol, loud = loud, baseboost = baseboost)
+        source = SourceCompile.scp_compile(getattr(songInfo, SongAttr.vID), 
+                                           getattr(songInfo, SongAttr.SongVol), 
+                                           loud = loud, baseboost = baseboost)
         return source, songInfo
         
     
@@ -44,6 +47,7 @@ class SourceCompile():
             # source.url = ''
 
         url = args[0]
+        print("SCP URL " + url)
         ### scp: 1. search | 2. compile | 3. play 
         # 1. search -> get url
         if is_ytlink(url): 
@@ -68,13 +72,13 @@ class SourceCompile():
         # search for url in youtube API
         search_term = (" ".join(s)).lower()
         
-        # fetch vid from either db or youtube api search
+        # fetch vid from db
         match = SourceCompile.djdb.find_query_match(search_term)
         if match:
             # insert to db if not in db (Depreciated, safety catch)
-            if not SourceCompile.djdb.find_song_match(vid):
+            if not SourceCompile.djdb.find_song_match(getattr(match, SongAttr.vID)):
                 error_log(f"(Unexpected behaviour) Query found but song not in DB: {search_term} -> {vid}")
-                SourceCompile.yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
+                SourceCompile.yt_search_and_insert(getattr(match, SongAttr.vID), use_vID = True, newDJable = newDJable)
             return match
                     
         # no DB match entry  

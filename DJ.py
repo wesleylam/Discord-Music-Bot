@@ -32,7 +32,7 @@ class DJ(commands.Cog):
         if str(message) == "": return # prevent err
 
         m = await ctx.send(message)
-
+        
         # delete the message if needed
         if del_sec: 
             assert type(del_sec) == int
@@ -74,6 +74,7 @@ class DJ(commands.Cog):
             if not silence:
                 # show patch note
                 await self.patchnote(ctx)
+                await self.notify(ctx, f'DJ2.0 is here!', None)
                 
             # create new control instance, send current channel for further messaging
             self.manager.add(

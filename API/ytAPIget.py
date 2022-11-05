@@ -62,7 +62,6 @@ def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all
                 item['snippet']['channelId'], 
                 item['snippet']['thumbnails']['default']['url'], 
             )
-            setattr(song, SongAttr.SongVol, default_init_vol)
             if find_all:
                 songs.append(song)
             else:

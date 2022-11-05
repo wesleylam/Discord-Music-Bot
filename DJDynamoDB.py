@@ -282,7 +282,7 @@ class DJDB():
             )
         items = response['Items'] # items: list of dict
         chosen = random.choice(items)
-        return chosen[SongAttr.vID], chosen[SongAttr.SongVol] / 100 # scale down from percentage
+        return chosen[SongAttr.vID]
 
 
     # query song
@@ -323,8 +323,7 @@ class DJDB():
 
                     # match query
                     if q == query_words:
-                        item[SongAttr.SongVol] = item[SongAttr.SongVol] / 100 # Scale down from percentage
-                        return item
+                        return self.db_get(item[SongAttr.vID])
 
             # no match
             return None

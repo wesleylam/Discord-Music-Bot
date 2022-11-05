@@ -3,6 +3,7 @@ from DJDynamoDB import DJDB
 from flask import Flask, render_template, jsonify, request
 from flask_bootstrap import Bootstrap
 from VcControlManager import VcControlManager
+from DBFields import SongAttr
 import random
 from helper import vid_to_thumbnail, vid_to_embed_url
 
@@ -27,31 +28,37 @@ def serverPlaying(guildId):
     
     # not playing
     if songInfo == None:
-        return jsonify({
+        return constructReplyJSON({
             'needUpdate': False,
             'playing': False,
             'songData': None
         })
-    else:
-        playing = True
         
     # no update needed
     update = showingVid != songInfo.vID
     if not update:
-        return jsonify({
+        return constructReplyJSON({
             'needUpdate': False
         })
-        
+       
     # actual update
-    return jsonify({
+    return constructReplyJSON({
         'needUpdate': True,
         'playing': True,
         'songData': songData,
-        'queue': vcControl.getQueue(),
+        'queue': vcControl.getTitleQueue(),
     })
 
-# @app.post('/server/update/<guildId>')
-# def needUpdate(guildId):
+
+def constructReplyJSON(added):
+    default = {
+        'needUpdate': False,
+        'playing': False,
+        'songData': None,
+        'queue': None,
+    }
+    return jsonify(default | added)
+    
     
 
 @app.post('/server/action/<guildId>')
@@ -137,7 +144,7 @@ def runServer(vcControlManager):
     djdb = DJDB()
     djdb.connect()
 
-    hostName = "localhost"
+    hostName = "0.0.0.0"
     serverPort = 8080
     app.run(debug = False, host = hostName, port = serverPort )
 
