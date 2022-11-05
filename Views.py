@@ -1,12 +1,14 @@
 import os
 from aiohttp import ClientError
 import discord
-from discord_components import Button, ButtonStyle
+from discord import ButtonStyle
+from discord.ui import Button
 from options import patch_note_log
 from helper import *
 from enum import Enum
 import time
 from DJDynamoDB import DJDB
+from DBFields import SongAttr
 from aiohttp.client_exceptions import ClientOSError
 
 class ViewUpdateType(Enum):
@@ -111,14 +113,14 @@ class Views():
 
     def song_info_box(item, DJcount):
         
-        vid = item[DJDB.Attr.vID]
-        Title = item[DJDB.Attr.Title]
+        vid = getattr(item, SongAttr.vID)
+        Title = getattr(item, SongAttr.Title)
         url = vid_to_url(vid)
-        DJable = "**[DJable]**" if item[DJDB.Attr.DJable] else ""
-        Duration = item[DJDB.Attr.Duration]
-        Queries = "\n".join( [ f"{i+1}: " + " ".join([s for s in q]) for i, q in enumerate(item[DJDB.Attr.Queries]) ] )
-        Qcount = item[DJDB.Attr.Qcount]
-        SongVol = item[DJDB.Attr.SongVol]
+        DJable = "**[DJable]**" if getattr(item, SongAttr.DJable) else ""
+        Duration = getattr(item, SongAttr.Duration)
+        Queries = "\n".join( [ f"{i+1}: " + " ".join([s for s in q]) for i, q in enumerate(getattr(item, SongAttr.Queries)) ] )
+        Qcount = getattr(item, SongAttr.Qcount)
+        SongVol = getattr(item, SongAttr.SongVol)
 
         embedInfo = discord.Embed(title=Title, description=url + " " + DJable, color = rand_color(), url = url)
         embedInfo.add_field(name="DJ count", value=DJcount)

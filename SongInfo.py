@@ -1,12 +1,17 @@
+from DBFields import SongAttr
 class SongInfo():
 
     def __init__(self, vID, title, channelID, thumbnailURL = "", duration = None) -> None:
-        self.vID = vID
-        self.title = title
-        self.channelID = channelID
-        self.thumbnailURL = thumbnailURL
-        # in seconds
-        self.duration = duration
+        for attr in SongAttr.get_all():
+            setattr(self, attr, None)
+            
+        
+        setattr(self, SongAttr.vID, vID)
+        setattr(self, SongAttr.Title, title)
+        setattr(self, SongAttr.ChannelID, channelID)
+        setattr(self, SongAttr.Duration, duration)
+        
+        # self.thumbnailURL = thumbnailURL
         self.inserted = None # unknown state
 
     def __str__(self) -> str:

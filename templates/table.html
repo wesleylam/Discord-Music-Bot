@@ -1,0 +1,20 @@
+<h2>{{ table_title }}</h2>
+<br/>
+<table class="table">
+{%if ths%}
+    <tr>
+    {%for th in ths%}
+        <th>{{th}}</th>
+    {%endfor%}
+    </tr>
+{%endif%}
+
+{%for tr in trs%}
+    <tr>
+    {%for td in tr%}
+    <!-- potential injection attack  -->
+        <td>{{ td|safe }}</td>
+    {%endfor%}
+    </tr>
+{%endfor%}
+</table>

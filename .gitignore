@@ -1,0 +1,13 @@
+*/__pycache__/
+__pycache__/
+awsGet.py
+awsManageDynamoDB.ipynb
+config.py
+./keys
+DJuserkey.csv
+rootkey.csv
+
+mixed_cookie.txt
+YtVideo.pk
+*.log
+yt_search.json

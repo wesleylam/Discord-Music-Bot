@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<script src="{{ url_for('static',filename='js/server.js') }}"></script>
+
+<script>
+  let showingVid = "NULL"
+  const actionUrl = "{{ url_for('djAction', guildId = guildId) }}"
+  const fetchServerUrl = "{{ url_for('serverPlaying', guildId = guildId) }}"
+  setInterval(() => fetchServer(showingVid, (vid) => {
+    showingVid = vid
+  }), 3000);
+</script>
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/index.css') }}">
+{% endblock %}
+
+
+{% block content %}
+{{ super() }}
+
+<h1>Now Playing</h1>
+<h2 id="title_h2">{{ TITLE }}</h2>
+<div>
+  <iframe id="vid_iframe" width="420" height="315"
+  src="">
+  </iframe>
+</div>
+<div id="info_div">{{ INFO }}</div>
+<br/>
+<button class="btn" id="skip" onclick="onClickAction(this.id)"}>Skip</button>
+<button class="btn" id="leave" onclick="onClickAction(this.id)"}>Leave</button>
+{% endblock %}
