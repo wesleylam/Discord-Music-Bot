@@ -276,7 +276,7 @@ class Views():
         )
 
     # handle in DJ.py
-    def encore_button(self, vc, vid, label = "Encore", style = ButtonStyle.blue):
+    def encore_button(self, vc, vid, label = "Encore", style = ButtonStyle.blurple):
         return Button(style=style, label=label, id=self.BIgen("encore", vid))
 
     def skip_button(self, vc, vid, label = "Skip"):
@@ -322,7 +322,7 @@ class Views():
 
     def reDJ_button():
         # no guild id needed for this, but number needed for decomposing id
-        return Button(style=ButtonStyle.blue, label="DJ again", id="0_reDJ")
+        return Button(style=ButtonStyle.blurple, label="DJ again", id="0_reDJ")
 
     def song_vol_up_button(self, vid):
         return self.djbot_component_manager.add_callback(

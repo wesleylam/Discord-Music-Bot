@@ -4,15 +4,9 @@ import asyncio
 from API.tenorAPIget import get_tenor_gif
 from SongManager import SongManager
 from options import ffmpeg_error_log, default_init_vol, leaving_gif_search_list
-from Views import Views, ViewUpdateType
-from DJExceptions import DJBannedException
-from YTDLException import YTDLException
 from helper import error_log_e, error_log, is_banned, play_after_handler, song_is_live
-from DJDynamoDB import DJDB
 from SongInfo import SongInfo
 from API.ytAPIget import *
-import time
-import random
 
 from API.ytAPIget import yt_search_suggestions
 
@@ -91,7 +85,6 @@ class VcControl():
     # ----------------------------- DJ ---------------------------------------- # 
     # --------------------------------------------------------------------------- # 
     def djExec(self):
-        
         return 
 
     # --------------------------------------------------------------------------- # 
@@ -111,7 +104,7 @@ class VcControl():
     def view():
         pass
 
-    def add(self, source, songInfo, player, insert = False):
+    def addSong(self, source, songInfo, player, insert = False):
         print("add song")
         print(source)
         print(player)

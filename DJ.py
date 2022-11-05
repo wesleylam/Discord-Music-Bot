@@ -76,7 +76,10 @@ class DJ(commands.Cog):
                 await self.patchnote(ctx)
                 
             # create new control instance, send current channel for further messaging
-            self.manager.add(ctx.guild.id, VcControl(ctx.channel, self, ctx.voice_client, ctx.guild))
+            self.manager.add(
+                ctx.guild.id, 
+                VcControl(ctx.channel, self, ctx.voice_client, ctx.guild)
+            )
         else: 
             n = ctx.voice_client.channel.name
             if not silence:
@@ -188,7 +191,7 @@ class DJ(commands.Cog):
         if vc is None:
             await self.join(ctx)
             # vc = ctx.voice_client
-        self.manager.getControl(ctx.guild.id).add(source, songInfo, ctx.author, insert = insert)
+        self.manager.getControl(ctx.guild.id).addSong(source, songInfo, ctx.author, insert = insert)
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
     # COMMAND: nowplaying
