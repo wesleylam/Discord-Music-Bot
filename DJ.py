@@ -696,7 +696,7 @@ class DJ(commands.Cog):
     # --------- ACTION HANDLERS --------- # 
     # repeat button handler
     async def repeat_btn_handler(self, ctx, p):
-        vid = "_".join(p)
+        vid = Views.separator.join(p)
         url = vid_to_url(vid)
         await self.play(ctx, url)
     # reDJ button handler
@@ -731,7 +731,13 @@ class DJ(commands.Cog):
             await self.notify(ctx, e, del_sec=None)
             # log to files
             error_log_e(e)
-        raise e
+
+        err_guild_vcControl = self.vcControls[ctx.guild.id]
+        if err_guild_vcControl.stream_err is not None and err_guild_vcControl.dj == True:
+            await self.notify(ctx, "Restarting DJ due to error", del_sec=10)
+            await self.dj(ctx)
+        else:
+            raise e
 
 
 # -------------------------------------------- MAIN ------------------------------------------------ # 

@@ -34,21 +34,22 @@ class Views():
         self.queue_items = [] # all queue messages
 
 
+    separator = "(*)"
     # Static function
     def decompose_btn_id(id):
         '''Get guild_id, action, (params) from button ID'''
-        tokens = id.split("_")
-        return tokens[0], tokens[1], tokens[2:]
+        tokens = id.split(Views.separator)
+        return tokens[0], tokens[1], tokens[2:] if len(tokens) > 2 else None
 
     # button identifier
     def BIgen(self, action, *args):
         '''
         Unique button identifier generation
-        label: [guild_id]_[action]_[identifier(s)]
+        label: [guild_id](*)[action](*)[identifier(s)]
         '''
         full_args = [action] + list(args)
-        linked_stringed_args = "_".join( list( [str(a) for a in full_args] ) )
-        return f"{self.guild_id}_{linked_stringed_args}"
+        linked_stringed_args = Views.separator.join( list( [str(a) for a in full_args] ) )
+        return f"{self.guild_id}{Views.separator}{linked_stringed_args}"
 
 
     # ------------------------------ PATCH NOTE VIEW -------------------------------- # 
@@ -325,7 +326,7 @@ class Views():
 
     def reDJ_button():
         # no guild id needed for this, but number needed for decomposing id
-        return Button(style=ButtonStyle.blue, label="DJ again", id="0_reDJ")
+        return Button(style=ButtonStyle.blue, label="DJ again", id=f"0{Views.separator}reDJ")
 
     def song_vol_up_button(self, vid):
         return self.djbot_component_manager.add_callback(
