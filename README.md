@@ -11,6 +11,9 @@ Built using Python 3.7.7 with AWS DynamoDB
 - ffmpeg
 - opus (Not required in windows environment: https://discordpy.readthedocs.io/en/latest/api.html#discord.opus.load_opus)
 - pytz (timezone)
+- flask
+- flask[async] (only needed if using async function in flask)
+- waitress (for flask deployment server)
 
 ## Packages install
 - discord (async-timeout, chardet, typing-extensions, multidict, attrs, idna, yarl, aiohttp, discord.py, discord)
@@ -35,8 +38,8 @@ Built using Python 3.7.7 with AWS DynamoDB
     - `cookiefile` options within ytdl options can be added to access premium content
 
 
-## fixed bug
-/home/wesleylam/.local/lib/python3.7/site-packages/youtube_dl/extractor/youtube.py
+## manual bug fix
+python3.7/site-packages/youtube_dl/extractor/youtube.py
 refer to this fix: https://github.com/ytdl-org/youtube-dl/pull/30366/files  
 ```
     #  r'\bm=(?P<sig>[a-zA-Z0-9$]{2})\(decodeURIComponent\(h\.s\)\)',
