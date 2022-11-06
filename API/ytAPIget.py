@@ -2,7 +2,8 @@ from SongInfo import SongInfo
 import requests
 import json
 from config import yt_API_key
-from helper import ISO8601_to_duration
+from DBFields import SongAttr
+from helper import ISO8601_to_duration, default_init_vol
 
 def get_yt_suggestions(vID, force_music = True):
     categoryID_get = f"&videoCategoryId={10}"
@@ -66,9 +67,11 @@ def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all
             else:
                 if use_vID:
                     song.duration = ISO8601_to_duration( item['contentDetails']['duration'] )
+                # return single song only
                 return song
     
     if find_all: 
+        # return list of matches
         return songs
     else:
         # in case of no songs found

@@ -72,6 +72,9 @@ def yturl_to_vid(url):
 def vid_to_url(vid):
     return f"https://youtu.be/{vid}"
 
+def vid_to_embed_url(vid):
+    return f"https://www.youtube.com/embed/{vid}"
+
 def vid_to_thumbnail(vid):
     return f"https://i.ytimg.com/vi/{vid}/default.jpg"
 
@@ -153,7 +156,7 @@ def error_log(err_m):
     '''Simply log the error to error log'''
     now = get_time()
     print("Logging error: " + err_m)
-    with open(default_error_log, "a") as f:
+    with open(default_error_log, "a", encoding="utf-8") as f:
         m = f"{now}: {err_m}\n"
         f.write(m)
 

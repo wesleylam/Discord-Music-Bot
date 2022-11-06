@@ -1,0 +1,17 @@
+{% extends "bootstrap/base.html" %}
+{% block content %}
+{{ super() }}
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="{{ url_for('index') }}">阿笠博士</a>
+      </div>
+      <ul class="nav navbar-nav">
+        <li class="active"><a href="#">Home</a></li>
+        {%for guild in activeGuilds %}
+          <li><a href="{{ url_for('server', guildId = guild.id) }}">{{ guild.name }}</a></li>
+        {%endfor%}
+      </ul>
+    </div>
+</nav>
+{% endblock %}

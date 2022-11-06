@@ -1,3 +1,4 @@
+# TODO: REWRITE README FOR DJ2.0
 # Discord mini music bot
 Built using Python 3.7.7 with AWS DynamoDB
 
@@ -10,6 +11,9 @@ Built using Python 3.7.7 with AWS DynamoDB
 - ffmpeg
 - opus (Not required in windows environment: https://discordpy.readthedocs.io/en/latest/api.html#discord.opus.load_opus)
 - pytz (timezone)
+- flask
+- flask[async] (only needed if using async function in flask)
+- waitress (for flask deployment server)
 
 ## Packages install
 - discord (async-timeout, chardet, typing-extensions, multidict, attrs, idna, yarl, aiohttp, discord.py, discord)

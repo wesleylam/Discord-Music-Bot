@@ -4,6 +4,7 @@ from config import dynamodb_table, dynamodb_hist_table
 from options import default_init_vol
 from SongInfo import SongInfo
 import random
+from DBFields import SongAttr, HistAttr
 from helper import error_log, error_log_e, get_time, vid_to_thumbnail
 
 # aws
@@ -12,29 +13,6 @@ from boto3.dynamodb.conditions import Attr
 
 
 class DJDB():
-    class Attr():
-        vID = "vID"
-        Title = "Title"
-        STitle = "STitle" # Search Title (all lower case for search)
-        ChannelID = "ChannelID"
-        Queries = "Queries"
-        DJable = "DJable"
-        SongVol = "SongVol"
-        Duration = "Duration"
-        Qcount = "Qcount"
-        
-        def get_all():
-            return [DJDB.Attr.vID, DJDB.Attr.Title, DJDB.Attr.STitle, 
-            DJDB.Attr.ChannelID, DJDB.Attr.Queries, DJDB.Attr.DJable, 
-            DJDB.Attr.SongVol, DJDB.Attr.Duration, DJDB.Attr.Qcount, ]
-
-    class Attr_hist():
-        Time = "Time" # KEY
-        vID = "vID"
-        ServerID = "ServerID"
-        ServerName = "ServerName"
-        Player = "Player" # DJ or member
-
     def __init__(self) -> None:
         self.dynamodb = boto3.resource('dynamodb')
 
@@ -45,6 +23,13 @@ class DJDB():
     def disconnect(self):
         # no need disconnect?
         pass
+    
+    def dbItemToSongInfo(item):
+        song = SongInfo(item[SongAttr.vID], item[SongAttr.Title], item[SongAttr.ChannelID])
+        for attr in SongAttr.get_all():
+            setattr(song, attr, item[attr])
+        return song
+            
 
     # ------------------------ PRIVATE: DB direct actions --------------------------- # 
     # ** no longer private (used in DJ/songinfo) **
@@ -60,9 +45,9 @@ class DJDB():
 
         try:
             item = response['Item']
-            if DJDB.Attr.SongVol in item:
-                item[DJDB.Attr.SongVol] = item[DJDB.Attr.SongVol] / 100 # Scale down from percentage
-            return item
+            if SongAttr.SongVol in item:
+                item[SongAttr.SongVol] = item[SongAttr.SongVol] / 100 # Scale down from percentage
+            return DJDB.dbItemToSongInfo(item)
         except KeyError as e:
             raise DJDBException(f"No item for vID: {vID}")
             
@@ -94,7 +79,7 @@ class DJDB():
 
         # scan all songs' queries
         response = self.table.scan(
-            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}'
+            ProjectionExpression=f'{SongAttr.vID}, {SongAttr.Queries}'
         )
         items = response['Items'] # items: list of dict
 
@@ -107,7 +92,7 @@ class DJDB():
 
             # HEAVY: for each video, for each query O(v*q)
             for v in items:
-                for q in v[DJDB.Attr.Queries]:
+                for q in v[SongAttr.Queries]:
                     # ensure q in database is sorted
                     if not all(q[i] <= q[i+1] for i in range(len(q)-1)):
                         error_log("Unexpected behaviour: query not sorted \nqueries: " + str(q))
@@ -139,13 +124,13 @@ class DJDB():
         vID = songInfo.vID
 
         # get song query (must find song, cannot cause error, song added above)
-        song = self.db_get(vID, [DJDB.Attr.Queries])
+        song = self.db_get(vID, [SongAttr.Queries])
 
         # transform query into tokens
         query_words = self.chop_query(query.lower())
 
         # check for duplicate
-        for q in song[DJDB.Attr.Queries]:
+        for q in song[SongAttr.Queries]:
             if q == query_words:
                 # skip: duplicate
                 return 
@@ -153,7 +138,7 @@ class DJDB():
         # append the query if it is not duplicate
         self.table.update_item(
             Key={ 'vID': vID },
-            UpdateExpression=f'SET {DJDB.Attr.Queries} = list_append({DJDB.Attr.Queries}, :val)',
+            UpdateExpression=f'SET {SongAttr.Queries} = list_append({SongAttr.Queries}, :val)',
             ExpressionAttributeValues={
                 ':val': [query_words]
             }
@@ -161,16 +146,16 @@ class DJDB():
 
     def remove_query_binding(self, vID, query):
         # get all queries
-        song = self.db_get(vID, [DJDB.Attr.Queries])
+        song = self.db_get(vID, [SongAttr.Queries])
         try: 
-            i = song[DJDB.Attr.Queries].index(query)
+            i = song[SongAttr.Queries].index(query)
         except ValueError as e:
             raise DJDBException(f"No query ({query}) binded for video ({vID}): {e.message}")
 
         # remove the query from vID
         self.table.update_item(
             Key={ 'vID': vID },
-            UpdateExpression=f"REMOVE {DJDB.Attr.Queries}[{i}]",
+            UpdateExpression=f"REMOVE {SongAttr.Queries}[{i}]",
         )
 
 
@@ -185,12 +170,12 @@ class DJDB():
 
         # get all info and default parameters
         item = songInfo.dictify_info()    
-        item[DJDB.Attr.STitle] = item[DJDB.Attr.Title].lower()
-        item[DJDB.Attr.Queries] = []
-        item[DJDB.Attr.DJable] = newDJable
-        item[DJDB.Attr.SongVol] = int(songVol * 100) # as percentage (need int)
-        item[DJDB.Attr.Duration] = 0
-        item[DJDB.Attr.Qcount] = qcount
+        item[SongAttr.STitle] = item[SongAttr.Title].lower()
+        item[SongAttr.Queries] = []
+        item[SongAttr.DJable] = newDJable
+        item[SongAttr.SongVol] = int(songVol * 100) # as percentage (need int)
+        item[SongAttr.Duration] = 0
+        item[SongAttr.Qcount] = qcount
 
         # add to db
         self.table.put_item(Item = item)
@@ -203,12 +188,12 @@ class DJDB():
 
         # delete related history
         response = self.hist_table.scan(
-            FilterExpression = Attr(DJDB.Attr_hist.vID).eq(vid),
+            FilterExpression = Attr(HistAttr.vID).eq(vid),
         )
         items = response['Items'] # items: list of dict
         for item in items: 
             self.hist_table.delete_item(
-                Key = {DJDB.Attr_hist.Time: item[DJDB.Attr_hist.Time]},
+                Key = {HistAttr.Time: item[HistAttr.Time]},
             )
 
     # --------------------------- Song info upate ---------------------------- # 
@@ -223,13 +208,13 @@ class DJDB():
 
     def set_djable(self, vID, djable = True):
         # update
-        self.db_update(vID, DJDB.Attr.DJable, djable)
+        self.db_update(vID, SongAttr.DJable, djable)
 
 
     # update duration info
     def update_duration(self, vID, duration):
         try:
-            old_duration = self.db_get(vID, [DJDB.Attr.Duration])[DJDB.Attr.Duration]
+            old_duration = self.db_get(vID, [SongAttr.Duration])[SongAttr.Duration]
         except DJDBException as e:
             # possible cause: delete from db and try to update
             error_log("Cannot update duration: " + e.message)
@@ -237,27 +222,27 @@ class DJDB():
 
         print(f"Updating duration for {vID}: {duration}")
         if old_duration == 0 or old_duration != duration:
-            self.db_update(vID, DJDB.Attr.Duration, int(duration))
+            self.db_update(vID, SongAttr.Duration, int(duration))
 
 
     def increment_qcount(self, vID):
         # update
         self.table.update_item(
             Key = { 'vID': vID },
-            UpdateExpression = f'SET {DJDB.Attr.Qcount} = {DJDB.Attr.Qcount} + :val',
+            UpdateExpression = f'SET {SongAttr.Qcount} = {SongAttr.Qcount} + :val',
             ExpressionAttributeValues = { ':val': 1 }
         )
 
     def change_vol(self, vID, multiplier, setNewVol = None):
         if setNewVol is None:
-            original_vol = self.db_get(vID, [DJDB.Attr.SongVol])[DJDB.Attr.SongVol]
+            original_vol = self.db_get(vID, [SongAttr.SongVol])[SongAttr.SongVol]
             new_vol_percentage = int(float(original_vol * 100) * multiplier)
         else:
             new_vol_percentage = setNewVol
         # update
         self.table.update_item(
             Key = { 'vID': vID },
-            UpdateExpression = f'SET {DJDB.Attr.SongVol} = :val',
+            UpdateExpression = f'SET {SongAttr.SongVol} = :val',
             ExpressionAttributeValues = { ':val': new_vol_percentage }
         )
         return new_vol_percentage
@@ -271,14 +256,14 @@ class DJDB():
     # ------------------------------- Queries ------------------------------- # 
     def find_djable(self, vID) -> bool:
         try: 
-            return self.db_get(vID, [DJDB.Attr.DJable])[DJDB.Attr.DJable]
+            return self.db_get(vID, [SongAttr.DJable])[SongAttr.DJable]
         except (DJDBException, ClientError) as e:
             error_log("cannot find djable: " + str(e.message if hasattr(e, 'message') else e))
             return None
 
     def find_duration(self, vID) -> int:
         try: 
-            return self.db_get(vID, [DJDB.Attr.Duration])[DJDB.Attr.Duration]
+            return self.db_get(vID, [SongAttr.Duration])[SongAttr.Duration]
         except DJDBException as e:
             return -1
 
@@ -288,16 +273,16 @@ class DJDB():
         if dj:
             response = self.table.scan(
                 # FilterExpression=Attr('Title').contains('back')
-                FilterExpression = Attr(DJDB.Attr.DJable).eq(True),
-                ProjectionExpression = f'{DJDB.Attr.vID}, {DJDB.Attr.SongVol}'
+                FilterExpression = Attr(SongAttr.DJable).eq(True),
+                ProjectionExpression = f'{SongAttr.vID}, {SongAttr.SongVol}'
             )
         else:
             response = self.table.scan(
-                ProjectionExpression = f'{DJDB.Attr.vID}, {DJDB.Attr.SongVol}'
+                ProjectionExpression = f'{SongAttr.vID}, {SongAttr.SongVol}'
             )
         items = response['Items'] # items: list of dict
         chosen = random.choice(items)
-        return chosen[DJDB.Attr.vID], chosen[DJDB.Attr.SongVol] / 100 # scale down from percentage
+        return chosen[SongAttr.vID]
 
 
     # query song
@@ -312,7 +297,7 @@ class DJDB():
     def find_query_match(self, query):
         # scan all songs' queries
         response = self.table.scan(
-            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}, {DJDB.Attr.SongVol}'
+            ProjectionExpression=f'{SongAttr.vID}, {SongAttr.Queries}, {SongAttr.SongVol}'
         )
         items = response['Items'] # items: list of dict
 
@@ -326,11 +311,11 @@ class DJDB():
             # HEAVY
             for item in items:
                 # bug: only with {'vID': 'QS'}
-                if DJDB.Attr.Queries not in item.keys():
-                    self.remove_song(item[DJDB.Attr.vID])
+                if SongAttr.Queries not in item.keys():
+                    self.remove_song(item[SongAttr.vID])
                     break
 
-                for q in item[DJDB.Attr.Queries]:
+                for q in item[SongAttr.Queries]:
                     # ensure q in database is sorted
                     if not all(q[i] <= q[i+1] for i in range(len(q)-1)):
                         error_log("Unexpected behaviour: query not sorted \nqueries: " + str(q))
@@ -338,8 +323,7 @@ class DJDB():
 
                     # match query
                     if q == query_words:
-                        item[DJDB.Attr.SongVol] = item[DJDB.Attr.SongVol] / 100 # Scale down from percentage
-                        return item
+                        return self.db_get(item[SongAttr.vID])
 
             # no match
             return None
@@ -350,7 +334,7 @@ class DJDB():
         scan_params = {}
 
         if dj is not None:
-            scan_params["FilterExpression"] = Attr(DJDB.Attr.DJable).eq(dj)
+            scan_params["FilterExpression"] = Attr(SongAttr.DJable).eq(dj)
         
         # get all attr if not specified
         if needed_attr is not None and len(needed_attr) > 0:
@@ -375,11 +359,11 @@ class DJDB():
     def search(self, search_term, top = 10):
 
         ############## search by title
-        needed_attr = [ DJDB.Attr.Title, DJDB.Attr.vID, DJDB.Attr.Queries, DJDB.Attr.ChannelID]
+        needed_attr = [ SongAttr.Title, SongAttr.vID, SongAttr.Queries, SongAttr.ChannelID]
         needed_attr_str = ", ".join(needed_attr)
         # IDEA: can implement multiple search terms?
         response = self.table.scan(
-            FilterExpression = Attr(DJDB.Attr.STitle).contains(search_term),
+            FilterExpression = Attr(SongAttr.STitle).contains(search_term),
             ProjectionExpression = needed_attr_str
         )
         items = response['Items'] # items: list of dict
@@ -389,13 +373,13 @@ class DJDB():
             title_searched_vids = []
             title_searched_songs = []
         else:
-            title_searched_vids = [ item[DJDB.Attr.vID] for item in items[:top] ]
-            title_searched_songs = [ SongInfo(item[DJDB.Attr.vID], item[DJDB.Attr.Title], item[DJDB.Attr.ChannelID], vid_to_thumbnail(item[DJDB.Attr.vID])) for item in items[:top] ]
+            title_searched_vids = [ item[SongAttr.vID] for item in items[:top] ]
+            title_searched_songs = [ SongInfo(item[SongAttr.vID], item[SongAttr.Title], item[SongAttr.ChannelID], vid_to_thumbnail(item[SongAttr.vID])) for item in items[:top] ]
         
         ############## search by queries
         # scan all songs' queries
         response = self.table.scan(
-            ProjectionExpression=f'{DJDB.Attr.vID}, {DJDB.Attr.Queries}, {DJDB.Attr.Title}, {DJDB.Attr.ChannelID}'
+            ProjectionExpression=f'{SongAttr.vID}, {SongAttr.Queries}, {SongAttr.Title}, {SongAttr.ChannelID}'
         )
         items = response['Items'] # items: list of dict
         if len(items) <= 0:
@@ -408,19 +392,19 @@ class DJDB():
             # HEAVY
             for item in items:
                 # skip songs matched title
-                if item[DJDB.Attr.vID] in title_searched_vids:
+                if item[SongAttr.vID] in title_searched_vids:
                     continue
                 
-                if DJDB.Attr.Queries in item:
-                    for song_query in item[DJDB.Attr.Queries]:
+                if SongAttr.Queries in item:
+                    for song_query in item[SongAttr.Queries]:
                         # match query
                         if any(word in song_query for word in query_words):
                             query_searched_songs.append( 
                                 SongInfo(
-                                    item[DJDB.Attr.vID], 
-                                    f"{item[DJDB.Attr.Title]} [{'/'.join(song_query)}]", 
-                                    item[DJDB.Attr.ChannelID], 
-                                    vid_to_thumbnail(item[DJDB.Attr.vID])
+                                    item[SongAttr.vID], 
+                                    f"{item[SongAttr.Title]} [{'/'.join(song_query)}]", 
+                                    item[SongAttr.ChannelID], 
+                                    vid_to_thumbnail(item[SongAttr.vID])
                                 )
                             )
                             break
@@ -434,11 +418,11 @@ class DJDB():
 # ------------------ History ------------------- # 
     def add_history(self, vID, serverID, serverName, player):
         item = dict()
-        item[DJDB.Attr_hist.Time] = str(get_time())
-        item[DJDB.Attr_hist.vID] = vID
-        item[DJDB.Attr_hist.ServerID] = serverID
-        item[DJDB.Attr_hist.ServerName] = serverName
-        item[DJDB.Attr_hist.Player] = player
+        item[HistAttr.Time] = str(get_time())
+        item[HistAttr.vID] = vID
+        item[HistAttr.ServerID] = serverID
+        item[HistAttr.ServerName] = serverName
+        item[HistAttr.Player] = player
 
         # add to db
         self.hist_table.put_item(Item = item)
@@ -447,18 +431,18 @@ class DJDB():
     def get_hist_rank(self, serverID = None, dj = False, top = 20):
         filter = None
         if serverID: 
-            filter = Attr(DJDB.Attr_hist.ServerID).eq(serverID) 
+            filter = Attr(HistAttr.ServerID).eq(serverID) 
         if dj: 
-            filter = (filter & Attr(DJDB.Attr_hist.Player).eq("DJ")) if filter else Attr(DJDB.Attr_hist.Player).eq("DJ")
+            filter = (filter & Attr(HistAttr.Player).eq("DJ")) if filter else Attr(HistAttr.Player).eq("DJ")
         
         if filter: 
             response = self.hist_table.scan(
                 FilterExpression = filter,
-                ProjectionExpression = f'{DJDB.Attr_hist.vID}'
+                ProjectionExpression = f'{HistAttr.vID}'
             )
         else: 
             response = self.hist_table.scan(
-                ProjectionExpression = f'{DJDB.Attr_hist.vID}'
+                ProjectionExpression = f'{HistAttr.vID}'
             )
         items = response['Items'] # items: list of dict
         
@@ -468,7 +452,7 @@ class DJDB():
         else:
             rank = {}
             for item in items:
-                item_vID = item[DJDB.Attr_hist.vID]
+                item_vID = item[HistAttr.vID]
                 if item_vID not in rank:
                     rank[item_vID] = 1
                 else:
@@ -476,15 +460,15 @@ class DJDB():
             print(rank)
                 
             # (vID, song title, times played)
-            ranked_DJ_history = [ (vID, self.db_get(vID, [DJDB.Attr.Title])[DJDB.Attr.Title], times ) for vID, times in sorted(rank.items(), key=lambda song: song[1], reverse=True) ]
+            ranked_DJ_history = [ (vID, self.db_get(vID, [SongAttr.Title])[SongAttr.Title], times ) for vID, times in sorted(rank.items(), key=lambda song: song[1], reverse=True) ]
             return ranked_DJ_history
 
 
 
     def get_hist_count(self, vID, serverID = None, dj = False):
-        filter = Attr(DJDB.Attr_hist.vID).eq(vID)
-        if serverID: filter = filter & Attr(DJDB.Attr_hist.ServerID).eq(serverID) 
-        if dj: filter = filter & Attr(DJDB.Attr_hist.Player).eq("DJ")
+        filter = Attr(HistAttr.vID).eq(vID)
+        if serverID: filter = filter & Attr(HistAttr.ServerID).eq(serverID) 
+        if dj: filter = filter & Attr(HistAttr.Player).eq("DJ")
 
         response = self.hist_table.scan(
             FilterExpression = filter
