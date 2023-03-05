@@ -18,13 +18,14 @@ class SongManager():
         # (source, songInfo, player)
         return self.playlist.pop(0)
 
-    def remove(self, k):
+    def remove(self, title_substr) -> SongInfo:
         '''remove song based on title (exact match)'''
         for i, item in enumerate(self.playlist):
             song = item[1] # songInfo
-            if getattr(song, SongAttr.Title) == k:
+            if title_substr in getattr(song, SongAttr.Title):
                 self.playlist.pop(i)
-                break
+                return song
+        return None
 
     def getPlaylist(self):
         return self.playlist

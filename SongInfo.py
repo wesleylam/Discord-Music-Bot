@@ -18,6 +18,9 @@ class SongInfo():
 
     def __str__(self) -> str:
         return self.stringify_info()
+    
+    def get(self, attr: str):
+        return getattr(self, attr)
 
     def get_all_info(self):
         return getattr(self, SongAttr.vID), getattr(self, SongAttr.Title), getattr(self, SongAttr.ChannelID)

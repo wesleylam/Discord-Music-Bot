@@ -6,21 +6,23 @@ from SongManager import SongManager
 from options import ffmpeg_error_log, default_init_vol, leaving_gif_search_list
 from helper import *
 from SongInfo import SongInfo
-from SourceCompile import SourceCompile
+import SourceCompile
 from API.ytAPIget import *
 import random
+import ServersHub
 
 from API.ytAPIget import yt_search_suggestions
 
 class VcControl():
-    def __init__(self, mChannel, djo, vc, guild) -> None:
+    def __init__(self, id, vc, ) -> None:
         self.vc: discord.VoiceClient = vc
         self.songManager = SongManager()
         # self.nowplaying: bool = False
-        self.playingInfo: SongInfo = None
+        self.playingSong: SongInfo = None
+        self.playingInfo: tuple[SongInfo, str] = None
         self.dj = True
         self.started = False
-        self.guild = guild
+        self.djReadied: tuple[str, dict] = None # (yt_link, play_options)
         
         self.djSuggestCount = 0
         self.djSuggestInterval = 2
@@ -28,29 +30,39 @@ class VcControl():
         # updated (prevent fetching all data every second)
         self.updated = False
         
+        self.guild_id = id
+        self.Hub = ServersHub.ServersHub
+        
         print("VCcontrol inited")
-        print(guild)
         pass
+    
+    def getServerControl(self):
+        return self.Hub.getControl(self.guild_id)
     
     # --------------------------------------------------------------------------- # 
     # ----------------------------- GETTERS ---------------------------------------- # 
     # --------------------------------------------------------------------------- # 
-    def getPlayingInfo(self):
+    def getPlayingInfo(self) -> SongInfo:
         return self.playingInfo
-    def getGuildName(self):
-        return self.guild.name
-    def getGuildId(self):
-        return self.guild.id
-    def getGuild(self):
-        return self.guild
+    
+    def getNowplaying(self) -> (SongInfo):
+        return self.playingSong
+
+    def getQueue(self):
+        '''list/ playlist'''
+        return self.songManager.getPlaylist()
+    
+    def getTitleQueue(self):
+        '''list/ playlist'''
+        return [ info.Title for source, info, author in self.songManager.getPlaylist() ]
+
     
     # --------------------------------------------------------------------------- # 
     # ----------------------------- LOOP ---------------------------------------- # 
     # --------------------------------------------------------------------------- # 
     def startPlayLoop(self):
         '''Add exec loop to current asyncio loop'''
-        loop = asyncio.get_event_loop()
-        asyncio.ensure_future(self.execLoop(), loop=loop)
+        asyncio.create_task(self.execLoop())
 
     async def execLoop(self):
         '''execute actions periodically, manage conflict actions and terminate vc controls'''
@@ -58,35 +70,58 @@ class VcControl():
         if self.started:
             return 
         
-        while(True):
+        self.started = True
+        
+        while(self.vc):
             self.exec()
             await asyncio.sleep(1)
+        
+        self.started = False
 
     def exec(self):
+        ''' Executed per second '''
         # check if vc is still playing (song ended)
         if not self.vc.is_playing():
+            self.playingSong = None
             self.playingInfo = None
             
-        if self.playingInfo is None and len(self.songManager.getPlaylist()) > 0:
-                # nothing playing && song exist in playlist 
-                source, songInfo, player = self.songManager.next()
-                songInfo.player = player
-                print("VC.play")
-                self.vc.play(source)
-                self.playingInfo = songInfo
+        if self.playingSong is None and len(self.songManager.getPlaylist()) > 0:
+            # nothing playing && song exist in playlist 
+            
+            # Get next queued song and PLAY
+            source, songInfo, player = self.songManager.next()
+            # songInfo.player = player # DO NOT INCLUDE PLAYER IN SONG INFO
+            self.playingSong = songInfo
+            self.playingInfo = (songInfo, player)
+            self.vc.play(source)
+            # notify server song started
+            self.getServerControl().songStarted()
         else:
+            # nothing playing && queue empty && dj enabled && dj readied song
+            if (self.dj and self.djReadied != None and self.playingSong is None 
+                and len(self.songManager.getPlaylist()) == 0):
+                
+                # CHANGE TO TOP LEVEL REQUEST
+                # self.addSong(*self.djReadied)
+                (yt_link, options) = self.djReadied
+                self.getServerControl().play(yt_link, **options)
+                self.djReadied = None
+                
             # currently playing
             # do idle task
             
             # dj task
-            if len(self.songManager.getPlaylist()) == 0 and self.dj: 
-                self.djExec()
+            if len(self.songManager.getPlaylist()) == 0 and self.dj and self.djReadied == None: 
+                self.djReadied = self.djExec()
                 
     # --------------------------------------------------------------------------- # 
     # ----------------------------- DJ ---------------------------------------- # 
     # --------------------------------------------------------------------------- # 
+    def getDJNext(self):
+        return self.djReadied
+    
     def djExec(self):
-        playingVid = getattr(self.playingInfo, SongAttr.vID) if self.playingInfo else None
+        playingVid = getattr(self.playingSong, SongAttr.vID) if self.playingSong else None
         vid = None
         while vid == None:
             self.djSuggestCount += 1
@@ -95,13 +130,20 @@ class VcControl():
                 print("DJ SUGGESTING yt suggestions:", vid)
                 self.djSuggestCount = 0
             else:            
-                vid = SourceCompile.djdb.find_rand_song()
+                vid = self.Hub.djdb.find_rand_song()
                 print("DJ SUGGESTING rand db song:", vid)
     
-        # search and compile
-        source, songInfo = SourceCompile.getSource([vid_to_url(vid)], newDJable = True)    
-        # play
-        self.addSong(source, songInfo, "DJ")
+        return (
+            vid_to_url(vid),
+            {
+                "newDJable": True,
+                "author": "DJ"
+            }
+        )
+        # # search and compile
+        # source, songInfo = SourceCompile.getSource(, newDJable = True)    
+        # # play
+        # return [source, songInfo, "DJ"]
     
     def getDJSongFromSuggestions(self, vidToSuggestFrom):
         '''Find dj source from youtube suggestions'''
@@ -114,7 +156,7 @@ class VcControl():
             
             for candidateVid in suitableVids:
                 # only suggest this if it is djable
-                djable = SourceCompile.djdb.find_djable(candidateVid)
+                djable = self.Hub.djdb.find_djable(candidateVid)
                 # None: means djdb does not contain that vid (new song, play it with djable as default)
                 if djable or djable is None:
                     vid = candidateVid
@@ -169,9 +211,6 @@ class VcControl():
         # stop otherwise
         else: self.stop()
 
-    def view():
-        pass
-
     def addSong(self, source, songInfo, player, insert = False):
         print("add song")
         print(source)
@@ -180,31 +219,29 @@ class VcControl():
         # start loop
         self.startPlayLoop()
 
-    def getNowplaying(self) -> SongInfo:
-        return self.playingInfo
-
-    def getQueue(self):
-        '''list/ playlist'''
-        return self.songManager.getPlaylist()
-    
-    def getTitleQueue(self):
-        '''list/ playlist'''
-        return [ info.Title for source, info, author in self.songManager.getPlaylist() ]
-
     def skip(self, author):
         self.vc.stop()
+        self.playingInfo = None
+        self.playingSong = None
 
-    def remove(self, k, author):
+    def remove(self, title_substr, author):
         '''remove_track'''
-        self.songManager.remove(k)
+        self.songManager.remove(title_substr)
 
     def clear(self):
         self.songManager.clear()
 
     def stop(self):
         self.vc.stop()
-        # disconnect
+        self.playingInfo = None
+        self.playingSong = None
+        # clear all queue?? 
+        # disconnect??
         pass
         
     def disconnect(self):
-        pass
+        self.dj = None
+        self.stop()
+        # disconnect vc
+        asyncio.get_event_loop().create_task(self.vc.disconnect())
+        self.vc = None

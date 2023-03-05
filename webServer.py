@@ -1,30 +1,26 @@
-# Python 3 server example
-from DJDynamoDB import DJDB
 from flask import Flask, render_template, jsonify, request
 from flask_bootstrap import Bootstrap
-from VcControlManager import VcControlManager
+from ServersHub import ServersHub
 from DBFields import SongAttr
 import random
 from helper import vid_to_thumbnail, vid_to_embed_url
+import asyncio
+from waitress import serve
+import ServerControl
 
 app = Flask(__name__)
 Bootstrap(app)
+
 
 # POST
 @app.post('/server/playing/<guildId>')
 def serverPlaying(guildId):
     showingVid = request.data.decode()
-    print(showingVid)
-    vcControl = manager.getControl(guildId)
-    songInfo = vcControl.getPlayingInfo()
+    # print(showingVid)
+    serverControl: ServerControl.ServerControl = ServersHub.getControl(guildId)
+    songInfo = serverControl.getNowplaying()
     
-    songData = {
-        'title': songInfo.Title,
-        'vID': songInfo.vID,
-        'thumbnailUrl': vid_to_thumbnail(songInfo.vID),
-        'embedUrl': vid_to_embed_url(songInfo.vID), 
-        'songInfoStr': str(songInfo)
-    } if songInfo else None
+    songData = constructSongData(songInfo)
     
     # not playing
     if songInfo == None:
@@ -35,7 +31,7 @@ def serverPlaying(guildId):
         })
         
     # no update needed
-    update = showingVid != songInfo.vID
+    update = needUpdate(showingVid, songInfo, serverControl)
     if not update:
         return constructReplyJSON({
             'needUpdate': False
@@ -46,18 +42,28 @@ def serverPlaying(guildId):
         'needUpdate': True,
         'playing': True,
         'songData': songData,
-        'queue': vcControl.getTitleQueue(),
+        'queue': [ f"{author}: {info.Title}" for source, info, author in serverControl.getQueue() ],
     })
+    
+def needUpdate(showingVid, songInfo, serverControl):
+    
+    return showingVid != songInfo.vID or \
+        len(onGoingJSON['queue']) != len(serverControl.getQueue())
+    
 
+def constructSongData(songInfo):
+    return {
+        'title': songInfo.Title,
+        'vID': songInfo.vID,
+        'thumbnailUrl': vid_to_thumbnail(songInfo.vID),
+        'embedUrl': vid_to_embed_url(songInfo.vID), 
+        'songInfoStr': str(songInfo)
+    } if songInfo else None
 
 def constructReplyJSON(added):
-    default = {
-        'needUpdate': False,
-        'playing': False,
-        'songData': None,
-        'queue': None,
-    }
-    return jsonify(default | added)
+    global onGoingJSON
+    onGoingJSON = onGoingJSON | added
+    return jsonify(onGoingJSON)
     
     
 
@@ -69,7 +75,9 @@ def djAction(guildId):
     actionId = request.data.decode()
     print(actionId)
     if actionId == 'skip':
-        manager.getControl(guildId).skip("WEB")
+        ServersHub.getControl(guildId).skip("WEB")
+    if actionId == 'leave':
+        ServersHub.getControl(guildId).disconnect()
     data = {'name': random.randint(100, 200)}
     
     return jsonify(data)
@@ -83,7 +91,7 @@ def server(guildId):
 
 @app.route('/song/<vID>')
 def song(vID):
-    item = djdb.db_get(vID)
+    item = ServersHub.djdb.db_get(vID)
     info = [ {"title": attr, "value": item[attr]} for attr in SongAttr.get_all()  ]
     
     options = build_table_options(info, show_headers = False)
@@ -92,17 +100,17 @@ def song(vID):
 @app.route('/')
 def index():
     # songs will be returned as list of dictionary
-    songs = djdb.list_all_songs(top = None, needed_attr = None, return_song_type = None)
+    songs = ServersHub.djdb.list_all_songs(top = None, needed_attr = None, return_song_type = None)
     for i in range(len(songs)):
         # songs[i]["Details"] = f'<a href="/song/{songs[i][SongAttr.vID]}"><button>DETAIL</button></a>'
         songs[i]["Details"] = render_template('abutton.html', url = f"/song/{songs[i][SongAttr.vID]}", text = "DETAIL")
 
-    activeGuilds = [ vcControl.getGuild() for i, vcControl in manager.getAllControls().items() ]
+    activeGuilds = [ serverControl.getGuild() for i, serverControl in ServersHub.getAllControls().items() ]
 
     options = build_table_options(songs, headers = SongAttr.get_all() + ['Details'])
     return render_template('index.html', 
                            activeGuilds = activeGuilds,
-                           table_title = "All songs", print_test = VcControlManager, **options)
+                           table_title = "All songs", **options)
 
 
 
@@ -136,17 +144,23 @@ def build_table_options(info, headers = None, show_headers = True):
     # return render_template('table.html', **options)
 
 
-def runServer(vcControlManager):
-    global manager 
-    manager = vcControlManager
+def runServer():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     
-    global djdb  
-    djdb = DJDB()
-    djdb.connect()
+    global onGoingJSON
+    # default response
+    onGoingJSON = {
+        'needUpdate': False,
+        'playing': False,
+        'songData': None,
+        'queue': None,
+    }
 
     hostName = "0.0.0.0"
     serverPort = 8080
-    app.run(debug = False, host = hostName, port = serverPort )
+    serve(app, host=hostName, port=serverPort)
+
 
 if __name__ == "__main__":  
     runServer()

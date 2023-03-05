@@ -36,3 +36,6 @@ Built using Python 3.7.7 with AWS DynamoDB
     - `dynamodb_hist_table`: table name of dynamodb for played histories
 - `options.py`: (Optional, defaulted) Options for ytdl, ffmpeg and other default in-app settings. Change to customise your settings.
     - `cookiefile` options within ytdl options can be added to access premium content
+ 
+## MANUALLY FIXED ISSUE
+https://github.com/ytdl-org/youtube-dl/commit/2dd6c6edd8e0fc5e45865b8e6d865e35147de772

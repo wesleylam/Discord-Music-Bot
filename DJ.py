@@ -2,30 +2,26 @@ import os
 import discord
 from discord.ext import commands
 # from discord_components import ComponentsBot
+import asyncio
 
-from VcControl import VcControl
-from SourceCompile import SourceCompile
 from Views import Views
 from API.tenorAPIget import get_tenor_gif
+import ServersHub
 
 from helper import *
 from config import *
 from options import *
-from DJDynamoDB import DJDB
 
 class DJ(commands.Cog):
-    def __init__(self, bot, vcControlManager):
-      
-        
+    def __init__(self, bot):
         self.bot = bot
-        self.vcControls = {} # guild.id: vcControl object
-        self.manager = vcControlManager
+        self.Hub = ServersHub.ServersHub
 
         # mysql
         # self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
         # dynamodb
-        SourceCompile.djdb = DJDB()
-        SourceCompile.djdb.connect()
+        # SourceCompile.djdb = DJDB()
+        # SourceCompile.djdb.connect()
 
     # ---------------------------- MESSAGING --------------------------- # 
     async def notify(self, ctx, message, del_sec = 10):
@@ -74,12 +70,11 @@ class DJ(commands.Cog):
             if not silence:
                 # show patch note
                 await self.patchnote(ctx)
-                await self.notify(ctx, f'DJ2.0 is here!', None)
+                await self.notify(ctx, f'DJ2.0 is here! http://weslam.ddns.net:42069', None)
                 
             # create new control instance, send current channel for further messaging
-            self.manager.add(
-                ctx.guild.id, 
-                VcControl(ctx.channel, self, ctx.voice_client, ctx.guild)
+            self.Hub.add(
+                ctx.guild.id, ctx.voice_client, ctx.guild, ctx.channel
             )
         else: 
             n = ctx.voice_client.channel.name
@@ -95,7 +90,7 @@ class DJ(commands.Cog):
         if ctx.voice_client is None:
             raise Exception("I am not in any voice channel, use join command instead")
         else: 
-            await self.manager.getControl(guild_id).disconnectVC()
+            self.Hub.getControl(guild_id).disconnect()
             
     # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
@@ -107,9 +102,9 @@ class DJ(commands.Cog):
             await self.join(ctx)
 
         # set vccontrol and bot status
-        self.manager.getControl(ctx.guild.id).set_dj_type( type )
+        self.Hub.getControl(ctx.guild.id).dj( type )
         await self.bot_status(dj = type)
-
+        
     # COMMAND: djoff
     @commands.command()
     async def djoff(self, ctx):
@@ -175,62 +170,46 @@ class DJ(commands.Cog):
     # ----------------------------- BASE PLAY COMMAND  ------------------------------ # 
     # COMMAND: play
     @commands.command(aliases=['p'])
-    async def play(self, ctx, *kwords, insert = False, loud = False, baseboost = False, newDJable = True):
-        '''Play a song (search in youtube / youtube link)'''
-        # search and compile
-        source, songInfo = SourceCompile.getSource(kwords, newDJable = newDJable, loud = loud, baseboost = baseboost)
-        
-        # play
-        await self.scp_play(ctx, source, songInfo, insert = insert)
-
-    async def scp_play(self, ctx, source, songInfo, insert = False):
-        '''
-        scp step 3: play in voice client
-        send source to playlist and play in vc
-        '''
-        vc = ctx.voice_client
-        if vc is None:
-            await self.join(ctx)
-            # vc = ctx.voice_client
-        self.manager.getControl(ctx.guild.id).addSong(source, songInfo, ctx.author, insert = insert)
+    async def play(self, ctx, *kwords, **config):
+        self.Hub.getControl(ctx.guild.id).addSong(*kwords, author=ctx.author, **config)
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
     # COMMAND: nowplaying
     @commands.command(aliases = ['np', 'now'])
     async def nowplaying(self, ctx):
         '''Redisplay nowplaying board w/ controls'''
-        await self.manager.getControl(ctx.guild.id).display_nowplaying()
+        await self.Hub.getControl(ctx.guild.id).display_nowplaying()
 
     # COMMAND: queue
     @commands.command(aliases=['playlist'])
     async def queue(self, ctx):
         '''List current playlist queue'''
-        await self.manager.getControl(ctx.guild.id).list(ctx)
+        await self.Hub.getControl(ctx.guild.id).list(ctx)
 
     # COMMAND: skip
     @commands.command()
     async def skip(self, ctx):
         '''Skip the current song'''
-        self.manager.getControl(ctx.guild.id).skip(ctx.author)
+        self.Hub.getControl(ctx.guild.id).skip(ctx.author)
 
     # COMMAND: remove
     @commands.command()
     async def remove(self, ctx, *args):
         '''Remove a song from playlist'''
         k = " ".join(args)
-        self.manager.getControl(ctx.guild.id).remove(k, ctx.author)
+        self.Hub.getControl(ctx.guild.id).remove(k, ctx.author)
 
     # COMMAND: clear
     @commands.command()
     async def clear(self, ctx):
         '''Clear playlist'''
-        self.manager.getControl(ctx.guild.id).clear()
+        self.Hub.getControl(ctx.guild.id).clear()
 
     # COMMAND: stop
     @commands.command()
     async def stop(self, ctx):
         '''Stop player'''
-        self.manager.getControl(ctx.guild.id).stop()
+        self.Hub.getControl(ctx.guild.id).stop()
 
     # COMMAND: vup (doubled)
     @commands.command()
@@ -326,7 +305,7 @@ class DJ(commands.Cog):
 
 # -------------------------------------------- MAIN ------------------------------------------------ # 
 
-async def startDJ(manager):
+async def startDJ():
     # set ffmpeg error log file
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
 
@@ -342,7 +321,7 @@ async def startDJ(manager):
                         description='DJ', intents=intents)
     
     try: 
-        await bot.add_cog(DJ(bot, manager))
+        await bot.add_cog(DJ(bot))
         await bot.start(TOKEN) 
     except Exception:
         await bot.close()
