@@ -3,18 +3,19 @@ from DJDynamoDB import DJDB
 from ViewBase import ViewBase
 import SourceCompile
 import ServersHub 
+import YTDLException
 from SongInfo import SongInfo
 from ViewWeb import ViewWeb
 from ViewDis import ViewDis
 
 class ServerControl():
-    def __init__(self, id: str, vc, guild, message_channel):
+    def __init__(self, id: str, vc, guild, message_channel, loop):
         self.id = id
         self.guild = guild
         self.vcControl = VcControl.VcControl(id, vc)
         self.viewsList: ViewsList = ViewsList()
         self.addView(ViewWeb())
-        self.addView(ViewDis(id, message_channel))
+        self.addView(ViewDis(id, message_channel, loop))
         
     def getGuildName(self):
         return self.guild.name
@@ -49,7 +50,11 @@ class ServerControl():
         '''Play a song (search in youtube / youtube link)'''
         # search and compile
         # also add to db when needed
-        source, song_info = SourceCompile.getSource(kwords, newDJable = newDJable, loud = loud, baseboost = baseboost)
+        try:
+            source, song_info = SourceCompile.getSource(kwords, newDJable = newDJable, loud = loud, baseboost = baseboost)
+        except YTDLException.YTDLException as e:
+            print(e)
+            return # ignore play command 
         
         # Voice client Control
         self.vcControl.addSong(source, song_info, author, insert = insert)
@@ -90,9 +95,10 @@ class ServerControl():
     # ----------------------------- RECEIVE UPDATE ------------------------------ # 
     def songStarted(self):
         self.viewsList.playingUpdated()
-        
     
-                
+    def songEnded(self):
+        self.viewsList.playingUpdated()
+    
     # ----------------------------- REQUEST INFO ------------------------------ # 
     def getNowplaying(self):
         return self.vcControl.getNowplaying()

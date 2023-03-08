@@ -13,3 +13,6 @@ class ViewBase():
         
     def queueUpdated(self):
         pass
+    
+    def disconnected(self):
+        pass

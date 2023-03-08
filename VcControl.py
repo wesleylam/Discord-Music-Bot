@@ -75,6 +75,8 @@ class VcControl():
         while(self.vc):
             self.exec()
             await asyncio.sleep(1)
+            
+        print("Exec Loop ended")
         
         self.started = False
 
@@ -82,6 +84,10 @@ class VcControl():
         ''' Executed per second '''
         # check if vc is still playing (song ended)
         if not self.vc.is_playing():
+            
+            # trigger song ended on server control
+            if self.playingSong is not None: self.getServerControl().songEnded()
+            
             self.playingSong = None
             self.playingInfo = None
             
@@ -94,7 +100,7 @@ class VcControl():
             self.playingSong = songInfo
             self.playingInfo = (songInfo, player)
             self.vc.play(source)
-            # notify server song started
+            # trigger song started on server control
             self.getServerControl().songStarted()
         else:
             # nothing playing && queue empty && dj enabled && dj readied song
@@ -219,7 +225,7 @@ class VcControl():
         # start loop
         self.startPlayLoop()
 
-    def skip(self, author):
+    def skip(self, author=None):
         self.vc.stop()
         self.playingInfo = None
         self.playingSong = None

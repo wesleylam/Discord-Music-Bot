@@ -9,6 +9,7 @@ async def main():
     print("Starting gather")
     ServersHub.ServersHub.djdb = DJDynamoDB.DJDB()
     ServersHub.ServersHub.djdb.connect()
+    ServersHub.ServersHub.loop = asyncio.get_event_loop()
     await asyncio.gather(
         asyncio.to_thread(webServer.runServer),
         DJ.startDJ()

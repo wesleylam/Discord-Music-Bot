@@ -171,7 +171,7 @@ class DJ(commands.Cog):
     # COMMAND: play
     @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords, **config):
-        self.Hub.getControl(ctx.guild.id).addSong(*kwords, author=ctx.author, **config)
+        self.Hub.getControl(ctx.guild.id).play(*kwords, author=ctx.author, **config)
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
     # COMMAND: nowplaying
