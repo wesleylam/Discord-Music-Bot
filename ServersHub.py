@@ -17,9 +17,10 @@ class ServersHub():
 
     # at the moment this can only be called from discord instance
     # will require reverse vc getter if we want to initiate from web instance
-    def add(id: str, vc, guild, message_channel):
-        serverControl = ServerControl.ServerControl(id, vc, guild, message_channel, ServersHub.loop)
-        ServersHub.serverControls[str(id)] = serverControl
+    def add(guild, vc, message_channel):
+        g_id: str = guild.id 
+        serverControl = ServerControl.ServerControl(vc, guild, message_channel, ServersHub.loop)
+        ServersHub.serverControls[str(g_id)] = serverControl
 
         
     def getControl(id) -> ServerControl.ServerControl:

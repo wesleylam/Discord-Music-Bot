@@ -14,23 +14,25 @@ import ServersHub
 from API.ytAPIget import yt_search_suggestions
 
 class VcControl():
-    def __init__(self, id, vc, ) -> None:
+    def __init__(self, id, g_name, vc, ) -> None:
         self.vc: discord.VoiceClient = vc
         self.songManager = SongManager()
         # self.nowplaying: bool = False
         self.playingSong: SongInfo = None
         self.playingInfo: tuple[SongInfo, str] = None
+        self.skip_author = None
         self.dj = True
         self.started = False
-        self.djReadied: tuple[str, dict] = None # (yt_link, play_options)
+        self.djReadied: tuple[str, dict, bool] = None # (yt_link, play_options, suggested)
         
         self.djSuggestCount = 0
-        self.djSuggestInterval = 2
+        self.djSuggestInterval = 4
         
         # updated (prevent fetching all data every second)
         self.updated = False
         
         self.guild_id = id
+        self.guild_name = g_name
         self.Hub = ServersHub.ServersHub
         
         print("VCcontrol inited")
@@ -71,10 +73,12 @@ class VcControl():
             return 
         
         self.started = True
-        
-        while(self.vc):
-            self.exec()
-            await asyncio.sleep(1)
+        try:
+            while(self.vc):
+                self.exec()
+                await asyncio.sleep(1)
+        except Exception as e:
+            error_log_e(e)
             
         print("Exec Loop ended")
         
@@ -82,11 +86,24 @@ class VcControl():
 
     def exec(self):
         ''' Executed per second '''
-        # check if vc is still playing (song ended)
-        if not self.vc.is_playing():
+        ### REFACTOR LOGIC HANDLING SKIP/PLAYING/END
+        # # check if vc is still playing (song ended)
+        # prev_is_playing = self.is_playing
+        # self.is_playing = self.vc.is_playing()
+        # if prev_is_playing and not self.is_playing:
+        #     # trigger song ended on server control
+        #     if self.playingSong is not None: self.getServerControl().songEnded()
+            
+        #     self.playingSong = None
+        #     self.playingInfo = None
+
+        self.just_skipped = self.skip_author
+        self.skip_author = None
+        # check if vc is still playing or skipped (song ended) 
+        if not self.vc.is_playing() or self.just_skipped is not None:
             
             # trigger song ended on server control
-            if self.playingSong is not None: self.getServerControl().songEnded()
+            if self.playingSong is not None: self.getServerControl().songEnded(self.playingSong.get(SongAttr.vID), skipped=self.just_skipped is not None)
             
             self.playingSong = None
             self.playingInfo = None
@@ -100,17 +117,22 @@ class VcControl():
             self.playingSong = songInfo
             self.playingInfo = (songInfo, player)
             self.vc.play(source)
+            
+            # add play history
+            vID = self.playingSong.get(SongAttr.vID)
+            self.Hub.djdb.add_history(vID, self.guild_id, self.guild_name, str(player))
             # trigger song started on server control
-            self.getServerControl().songStarted()
+            self.getServerControl().songStarted(vID)
         else:
             # nothing playing && queue empty && dj enabled && dj readied song
             if (self.dj and self.djReadied != None and self.playingSong is None 
                 and len(self.songManager.getPlaylist()) == 0):
                 
-                # CHANGE TO TOP LEVEL REQUEST
-                # self.addSong(*self.djReadied)
-                (yt_link, options) = self.djReadied
-                self.getServerControl().play(yt_link, **options)
+                # DOES NOT WORK NEED INVESTIGATE
+                (yt_link, options, suggested) = self.djReadied
+                # Do not play dj recommendation if just skipped
+                if not (suggested and self.just_skipped): 
+                    self.getServerControl().play(yt_link, **options)
                 self.djReadied = None
                 
             # currently playing
@@ -119,6 +141,13 @@ class VcControl():
             # dj task
             if len(self.songManager.getPlaylist()) == 0 and self.dj and self.djReadied == None: 
                 self.djReadied = self.djExec()
+                
+                
+            # # auto leave when no one else in vchannel
+            # members = vc.channel.members
+            # if len(members) == 1 and self.djObj.bot.user in members:
+            #     await self.djObj.leave(self, self.guild_id)
+            #     return
                 
     # --------------------------------------------------------------------------- # 
     # ----------------------------- DJ ---------------------------------------- # 
@@ -129,12 +158,14 @@ class VcControl():
     def djExec(self):
         playingVid = getattr(self.playingSong, SongAttr.vID) if self.playingSong else None
         vid = None
+        suggested = False
         while vid == None:
             self.djSuggestCount += 1
             if self.djSuggestCount >= self.djSuggestInterval and playingVid:
                 vid = self.getDJSongFromSuggestions(playingVid)
                 print("DJ SUGGESTING yt suggestions:", vid)
                 self.djSuggestCount = 0
+                suggested = True
             else:            
                 vid = self.Hub.djdb.find_rand_song()
                 print("DJ SUGGESTING rand db song:", vid)
@@ -144,12 +175,9 @@ class VcControl():
             {
                 "newDJable": True,
                 "author": "DJ"
-            }
+            },
+            suggested
         )
-        # # search and compile
-        # source, songInfo = SourceCompile.getSource(, newDJable = True)    
-        # # play
-        # return [source, songInfo, "DJ"]
     
     def getDJSongFromSuggestions(self, vidToSuggestFrom):
         '''Find dj source from youtube suggestions'''
@@ -227,6 +255,7 @@ class VcControl():
 
     def skip(self, author=None):
         self.vc.stop()
+        self.skip_author = author
         self.playingInfo = None
         self.playingSong = None
 

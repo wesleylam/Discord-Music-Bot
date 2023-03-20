@@ -7,15 +7,18 @@ import YTDLException
 from SongInfo import SongInfo
 from ViewWeb import ViewWeb
 from ViewDis import ViewDis
+import time
 
 class ServerControl():
-    def __init__(self, id: str, vc, guild, message_channel, loop):
-        self.id = id
+    def __init__(self, vc, guild, message_channel, loop):
+        g_id: str = guild.id 
+        g_name: str = guild.name
+        self.id = g_id
         self.guild = guild
-        self.vcControl = VcControl.VcControl(id, vc)
+        self.vcControl = VcControl.VcControl(g_id, g_name, vc)
         self.viewsList: ViewsList = ViewsList()
         self.addView(ViewWeb())
-        self.addView(ViewDis(id, message_channel, loop))
+        self.addView(ViewDis(g_id, message_channel, loop))
         
     def getGuildName(self):
         return self.guild.name
@@ -93,10 +96,16 @@ class ServerControl():
     
                 
     # ----------------------------- RECEIVE UPDATE ------------------------------ # 
-    def songStarted(self):
+    def songStarted(self, vID: str):        
+        self.counting_song = vID
+        self.counting_start_time = time.time()
+        # NEED TO ENSURE IT IS QUEUED BY PLAYER TO ADD TO QCOUNT
+        # ServersHub.ServersHub.djdb.increment_qcount(vID)
         self.viewsList.playingUpdated()
     
-    def songEnded(self):
+    def songEnded(self, vID: str, skipped: bool):
+        if self.counting_song and self.counting_start_time and self.counting_song == vID:
+            ServersHub.ServersHub.djdb.update_duration(vID, time.time() - self.counting_start_time)
         self.viewsList.playingUpdated()
     
     # ----------------------------- REQUEST INFO ------------------------------ # 

@@ -92,7 +92,9 @@ def server(guildId):
 @app.route('/song/<vID>')
 def song(vID):
     item = ServersHub.djdb.db_get(vID)
-    info = [ {"title": attr, "value": item[attr]} for attr in SongAttr.get_all()  ]
+    info = [ {"title": attr, "value": item.get(attr)} for attr in SongAttr.get_all() ]
+    info.append({"title": "Played count", "value": ServersHub.djdb.get_hist_count(vID, dj=False)})
+    info.append({"title": "DJ Played count", "value": ServersHub.djdb.get_hist_count(vID, dj=True)})
     
     options = build_table_options(info, show_headers = False)
     return render_template('index.html', table_title = getattr(item, SongAttr.Title), **options)

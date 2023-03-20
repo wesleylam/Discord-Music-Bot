@@ -28,8 +28,6 @@ class ViewDis(ViewBase):
         if self.playbox_message is not None:
             await self.playbox_message.delete()
             self.playbox_message = None
-            if self.playbox_view.vID != self.vID:
-                self.playbox_view = None
             return 
     
     # sender
@@ -55,14 +53,15 @@ class ViewDis(ViewBase):
         
         ## Create message / edit message
         message = f"""
-        {author} playing: {title}\n[{readable_time(duration)}]{url}
+        {author} playing: {title}\n[{readable_time(duration if duration is not None else 0)}]{url}
         """
         
         if self.playbox_message is None:
+            self.playbox_view = ViewDisMes.PlayBox(vID = vID)
             self.playbox_message = await self.message_channel.send(message, view=self.playbox_view)
             return 
         
-        self.playbox_message = await self.playbox_message.edit(content=message, view=self.playbox_view)
+        await self.playbox_message.edit(content=message, view=self.playbox_view)
         return 
     
     # receiver
