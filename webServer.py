@@ -52,9 +52,14 @@ def needUpdate(showingVid, songInfo, serverControl):
     
 
 def constructSongData(songInfo):
+    import SongInfo
+    songInfo: SongInfo.SongInfo = songInfo
+    
     return {
         'title': songInfo.Title,
         'vID': songInfo.vID,
+        'djable': songInfo.get(SongAttr.DJable),
+        'duration': songInfo.get(SongAttr.Duration),
         'thumbnailUrl': vid_to_thumbnail(songInfo.vID),
         'embedUrl': vid_to_embed_url(songInfo.vID), 
         'songInfoStr': str(songInfo)
@@ -71,14 +76,33 @@ def constructReplyJSON(added):
 def djAction(guildId):
     print("DJACTION ")
     print(guildId)
-    actions = ['skip', 'leave']
-    actionId = request.data.decode()
+    actions = ['skip', 'leave', 'djable', 'notdjable']
+    decoded = request.data.decode()
+    # print(decoded)
+    actionId, vID = decoded.split(',')
     print(actionId)
+    
+    response = ""
     if actionId == 'skip':
         ServersHub.getControl(guildId).skip("WEB")
+        response = ""
+        
     if actionId == 'leave':
         ServersHub.getControl(guildId).disconnect()
-    data = {'name': random.randint(100, 200)}
+        response = ""
+        
+    if actionId == 'djable':
+        response = f"{vID} is now DJable"
+        ServersHub.djdb.set_djable(vID, True)
+        
+    if actionId == 'notdjable':
+        response = f"{vID} is now NOT DJable"
+        ServersHub.djdb.set_djable(vID, False)
+    
+    data = {
+        'name': random.randint(100, 200),
+        'response': response
+    }
     
     return jsonify(data)
 
@@ -92,11 +116,11 @@ def server(guildId):
 @app.route('/song/<vID>')
 def song(vID):
     item = ServersHub.djdb.db_get(vID)
-    info = [ {"title": attr, "value": item.get(attr)} for attr in SongAttr.get_all() ]
-    info.append({"title": "Played count", "value": ServersHub.djdb.get_hist_count(vID, dj=False)})
-    info.append({"title": "DJ Played count", "value": ServersHub.djdb.get_hist_count(vID, dj=True)})
+    info = [ [attr, item.get(attr)] for attr in SongAttr.get_all() ]
+    info.append(["DJ Played count", ServersHub.djdb.get_hist_count(vID, dj=True)])
+    info.append(["Total Played count", ServersHub.djdb.get_hist_count(vID, dj=False)])
     
-    options = build_table_options(info, show_headers = False)
+    options = build_table_options(info, headers = None)
     return render_template('index.html', table_title = getattr(item, SongAttr.Title), **options)
 
 @app.route('/')
@@ -116,7 +140,7 @@ def index():
 
 
 
-def build_table_options(info, headers = None, show_headers = True):
+def build_table_options(info, headers = None):
     options = {}
     assert type(info) == list, "info must be list of list or list of dictionary"
     assert len(info) > 0, "must have one or more rows"
@@ -125,7 +149,7 @@ def build_table_options(info, headers = None, show_headers = True):
         headers = list(info[0].keys())
 
     # attributes key row
-    if show_headers and headers is not None:
+    if headers is not None:
         options["ths"] = headers
 
     trs = []

@@ -14,9 +14,10 @@ import ServersHub
 from API.ytAPIget import yt_search_suggestions
 
 class VcControl():
-    def __init__(self, id, g_name, vc, ) -> None:
+    def __init__(self, id, g_name, vc, loop) -> None:
         self.vc: discord.VoiceClient = vc
         self.songManager = SongManager()
+        self.asyncLoop = loop
         # self.nowplaying: bool = False
         self.playingSong: SongInfo = None
         self.playingInfo: tuple[SongInfo, str] = None
@@ -278,5 +279,5 @@ class VcControl():
         self.dj = None
         self.stop()
         # disconnect vc
-        asyncio.get_event_loop().create_task(self.vc.disconnect())
+        self.asyncLoop.create_task(self.vc.disconnect())
         self.vc = None

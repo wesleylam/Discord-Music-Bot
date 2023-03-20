@@ -15,7 +15,7 @@ class ServerControl():
         g_name: str = guild.name
         self.id = g_id
         self.guild = guild
-        self.vcControl = VcControl.VcControl(g_id, g_name, vc)
+        self.vcControl = VcControl.VcControl(g_id, g_name, vc, loop)
         self.viewsList: ViewsList = ViewsList()
         self.addView(ViewWeb())
         self.addView(ViewDis(g_id, message_channel, loop))

@@ -6,11 +6,26 @@
 
 <script>
   let showingVid = "NULL"
+  let clearResponse = false
   const actionUrl = "{{ url_for('djAction', guildId = guildId) }}"
   const fetchServerUrl = "{{ url_for('serverPlaying', guildId = guildId) }}"
-  setInterval(() => fetchServer(showingVid, (vid) => {
-    showingVid = vid
-  }), 3000);
+  setInterval(() => {
+    // ---- Fetch server for update
+    fetchServer(showingVid, (vid) => {
+      // setter for showingVid
+      showingVid = vid
+    });
+    
+    // ---- clear response
+    if (clearResponse) {
+      document.getElementById('response').innerHTML = ""
+      clearResponse = false
+    }
+    // the check is after to ensure at least 3s to show the message
+    if (document.getElementById('response').innerHTML !== "") {
+      clearResponse = true
+    }
+  }, 3000);
 </script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/index.css') }}">
 {% endblock %}
@@ -19,6 +34,7 @@
 {% block content %}
 {{ super() }}
 
+<h1 id="response"></h1>
 <h1 id="nowplaying_h1">Now Playing</h1>
 <div id="playing_div">
   <h2 id="title_h2">{{ TITLE }}</h2>
@@ -27,9 +43,14 @@
     src="">
     </iframe>
   </div>
+
+  <h3>Song Info:</h3>
   <div id="info_div">{{ INFO }}</div>
+  <h3>Queue:</h3>
+  <div id="queue_div">{{ QUEUE }}</div>
   <br/>
-  <button class="btn-green" id="DJable" onclick="onClickAction(this.id)"}>DJable</button>
+  <button class="btn" id="djable" onclick="onClickAction(this.id)"}>DJable</button>
+  <button class="btn" id="notdjable" onclick="onClickAction(this.id)"}>Not DJable</button>
   <button class="btn" id="skip" onclick="onClickAction(this.id)"}>Skip</button>
   <button class="btn" id="leave" onclick="onClickAction(this.id)"}>Leave</button>
 </div>
