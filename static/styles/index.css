@@ -13,3 +13,16 @@ body {
 #side_div{
     margin-left: 5%;
 }
+
+.btn#skip{
+    background-color:lightskyblue;
+}
+.btn#djable{
+    background-color:lightgreen;
+}
+.btn#notdjable{
+    background-color:pink;
+}
+.btn#notdjable__skip{
+    background-color:indianred;
+}

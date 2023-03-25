@@ -83,7 +83,7 @@ def djAction(guildId):
     print(actionIds)
     
     response = []
-    for actionId in actionIds.split(';'):
+    for actionId in actionIds.split('__'):
         if actionId == 'join':
             task: asyncio.Task = ServersHub.loop.create_task(ServersHub.DJ_BOT.dj(guildId))
             # wait until done

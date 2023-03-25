@@ -9,12 +9,15 @@
   let clearResponse = false
   const actionUrl = "{{ url_for('djAction', guildId = guildId) }}"
   const fetchServerUrl = "{{ url_for('serverPlaying', guildId = guildId) }}"
-  setInterval(() => {
-    // ---- Fetch server for update
+  const doFetchServer = () => {
     fetchServer(showingVid, (vid) => {
       // setter for showingVid
       showingVid = vid
     });
+  }
+  setInterval(() => {
+    // ---- Fetch server for update
+    doFetchServer()
     
     // ---- clear response
     if (clearResponse) {
@@ -50,7 +53,7 @@
         <button class="btn" id="skip" onclick="onClickAction(this.id)">Skip</button>
         <button class="btn" id="djable" onclick="onClickAction(this.id)">DJable</button>
         <button class="btn" id="notdjable" onclick="onClickAction(this.id)">Not DJable</button>
-        <button class="btn" id="nodjableskip" onclick="onClickAction(this.id)">Not DJable Skip</button>
+        <button class="btn" id="notdjable__skip" onclick="onClickAction(this.id)">Not DJable Skip</button>
         <button class="btn" id="leave" onclick="onClickAction(this.id)">Leave</button>
       </div>
     </div>
@@ -58,7 +61,7 @@
     <!-- SIDE INFO DIV -->
     <div id="side_div">
       <div id="info_div">
-        <h3>Song Info:</h3>
+        <h3 id="songInfo_h3">Song Info:</h3>
         <div id="info_table">
           {{ INFO }}
         </div>

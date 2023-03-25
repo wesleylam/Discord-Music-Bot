@@ -40,7 +40,7 @@ class SongInfo():
             SongAttr.Title: self.Title,
             SongAttr.vID: self.vID,
             SongAttr.DJable: self.get(SongAttr.DJable),
-            SongAttr.Duration: self.get(SongAttr.Duration),
+            SongAttr.Duration: readable_time(self.get(SongAttr.Duration)),
             'thumbnailUrl': vid_to_thumbnail(self.vID),
             'embedUrl': vid_to_embed_url(self.vID)
         }

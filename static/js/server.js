@@ -1,7 +1,7 @@
 function showNotPlaying() {
     document.getElementById("nowplaying_h1").innerHTML = "Not Playing";
     document.getElementById("playbox").hidden = true;
-    document.getElementById("join").hidden = false;
+    document.getElementById("join").classList.remove("hidden");
 }
 
 function fetchServer(showingVid, setShowingVid) { 
@@ -18,7 +18,7 @@ function fetchServer(showingVid, setShowingVid) {
         if (!data.playing) {
             showNotPlaying();
         } else {
-            document.getElementById("join").hidden = true;
+            document.getElementById("join").classList.add("hidden");
         }
 
         if (data.needUpdate) {
@@ -28,9 +28,25 @@ function fetchServer(showingVid, setShowingVid) {
             document.getElementById("vid_iframe").src = data.songData.embedUrl;
 
             // SONG INFO
-            document.getElementById("info_table").innerHTML = '';
-            document.getElementById("info_table").append(data.songData.DJable);
-            document.getElementById("info_table").append(data.songData.Duration);
+            const info_table = document.getElementById("info_table")
+            info_table.innerHTML = '';
+            info_table.append(data.songData.vID);
+            info_table.append(document.createElement('br'));
+            info_table.append(data.songData.Title);
+            info_table.append(document.createElement('br'));
+            info_table.append(data.songData.DJable);
+            
+            if (data.songData.DJable === true) {
+                document.getElementById("djable").classList.add("hidden");
+                document.getElementById("notdjable").classList.remove("hidden");
+                document.getElementById("notdjable__skip").classList.remove("hidden");
+            } else {
+                document.getElementById("djable").classList.remove("hidden");
+                document.getElementById("notdjable").classList.add("hidden");
+                document.getElementById("notdjable__skip").classList.add("hidden");
+            }
+            info_table.append(document.createElement('br'));
+            info_table.append(data.songData.Duration);
             
             // QUEUE INFO
             document.getElementById("queue_list").innerHTML = '';
@@ -57,6 +73,7 @@ function onClickAction(actionId) {
         // or add loading
         document.getElementById('response').innerHTML = "JOINING"
     }
+
     fetch(actionUrl, 
         { 
             "method": "POST",
@@ -72,5 +89,6 @@ function onClickAction(actionId) {
             console.log(data)
             document.getElementById('response').innerHTML = data.response
             document.getElementById(actionId).disabled = false;
+            doFetchServer()
         })
 }
