@@ -195,6 +195,8 @@ class DJ(commands.Cog):
     # COMMAND: play
     @commands.command(aliases=['p'])
     async def play(self, ctx, *kwords, **config):
+        if ctx.guild.id not in self.Hub.getAllControls():
+            await self.join(ctx)
         self.Hub.getControl(ctx.guild.id).play(*kwords, author=ctx.author, **config)
 
 # ------------------------------------ CONTROLS --------------------------------------- # 
