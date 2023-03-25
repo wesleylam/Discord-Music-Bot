@@ -118,6 +118,12 @@ class VcControl():
             self.playingSong = None
             self.playingInfo = None
             
+            # auto leave when no one else in vchannel
+            members = self.vc.channel.members
+            if len(members) == 1: # CAN ALSO CHECK FOR THAT ONE USER IS THE BOT
+                self.getServerControl().leave()
+                return
+            
         if self.playingSong is None and len(self.songManager.getPlaylist()) > 0:
             # nothing playing && song exist in playlist 
             
@@ -152,12 +158,6 @@ class VcControl():
             if len(self.songManager.getPlaylist()) == 0 and self.dj and self.djReadied == None: 
                 self.djReadied = self.djExec()
                 
-                
-            # # auto leave when no one else in vchannel
-            # members = vc.channel.members
-            # if len(members) == 1 and self.djObj.bot.user in members:
-            #     await self.djObj.leave(self, self.guild_id)
-            #     return
                 
     # --------------------------------------------------------------------------- # 
     # ----------------------------- DJ ---------------------------------------- # 
