@@ -1,7 +1,7 @@
 from helper import *
 from DJExceptions import *
 import ServersHub
-from API.ytAPIget import yt_search, yt_search_all
+from API.ytAPIget import yt_search_single
 from YTDLSource import YTDLSource, StaticSource
 from youtube_dl.utils import DownloadError
 from DBFields import SongAttr
@@ -21,8 +21,8 @@ def getSource(args, newDJable = True, loud = False, baseboost = False):
 
     # 2. compile
     source = scp_compile(getattr(songInfo, SongAttr.vID), 
-                                        getattr(songInfo, SongAttr.SongVol), 
-                                        loud = loud, baseboost = baseboost)
+                        getattr(songInfo, SongAttr.SongVol), 
+                        loud = loud, baseboost = baseboost)
     return source, songInfo
     
 
@@ -53,7 +53,8 @@ def process_song_input(args, DBonly = False, newDJable = True):
         if DBonly: raise DJSongNotFoundException(f"No match found for {vid} in Database (Specified not to search from yt)")
 
         # return match from search            
-        return yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
+        info, inserted = yt_search_and_insert(vid, use_vID = True, newDJable = newDJable)
+        return info
         
     # case 2: find in query db (or query yt if none)
     return scp_search(args, DBonly = DBonly, newDJable = newDJable)
@@ -76,9 +77,10 @@ def scp_search(s, DBonly = False, newDJable = True):
     if DBonly: raise DJDBException(f"No item found for {search_term} in Database (specified not to search in yt)")
 
     # get info by searching youtube API
-    info = yt_search_and_insert(search_term, insert_after = False, newDJable = newDJable)
-    # add query to db
-    ServersHub.ServersHub.djdb.add_query(search_term, info)
+    info, inserted = yt_search_and_insert(search_term, newDJable = newDJable)
+    if not inserted: 
+        # add query to db if it was existing song (query will be added if it is inserted)
+        ServersHub.ServersHub.djdb.add_query(search_term, info)
     return info # songInfo
     
 def yt_search_and_insert(search_term, use_vID = False, insert_after = True, newDJable = True):
@@ -88,16 +90,16 @@ def yt_search_and_insert(search_term, use_vID = False, insert_after = True, newD
     return: searched song info
     '''
     # SongInfo
-    info = yt_search(search_term, use_vID=use_vID)
+    info = yt_search_single(search_term, use_vID=use_vID)
     # no result from youtube api (by vid)
     if not info: 
         if use_vID: raise DJSongNotFoundException(f"No video found: {vid_to_url(search_term)}")
         else: raise DJSongNotFoundException(f"Nothing found in video form: {search_term}")
 
     if insert_after: 
-        inserted = ServersHub.ServersHub.djdb.insert_song(info, newDJable = newDJable)
-        info.inserted = inserted
-    return info
+        return ServersHub.ServersHub.djdb.insert_song(info, newDJable = newDJable, query=search_term)
+    
+    return info, False
 
 
 def scp_compile(vid, vol, loud = False, stream = True, baseboost = False):

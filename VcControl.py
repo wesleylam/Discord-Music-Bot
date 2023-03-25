@@ -204,8 +204,7 @@ class VcControl():
                 # None: means djdb does not contain that vid (new song, play it with djable as default)
                 if djable or djable is None:
                     vid = candidateVid
-                    info = SourceCompile.yt_search_and_insert(vid, use_vID = True, newDJable = True)
-                    inserted = info.inserted
+                    info, inserted = SourceCompile.yt_search_and_insert(vid, use_vID = True, newDJable = True)
                     return vid
         return None
         

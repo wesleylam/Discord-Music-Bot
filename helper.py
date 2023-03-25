@@ -62,6 +62,11 @@ def get_channel_to_join(voice_channels, author = None):
 
 # ----------------------------------------- PARSING INPUT ----------------------------------------------- # 
 
+def chop_query(query):
+    words = query.split(" ")
+    words.sort()
+    return words
+
 def is_ytlink(link):
     '''determine if input is a youtube link'''
     return ("youtu.be" in link or "youtube.com" in link)
@@ -111,6 +116,9 @@ def get_time():
     return datetime.datetime.now(tz=tz)
 
 def readable_time(sec):
+    if type(sec) != int:
+        return "-"
+    
     s = ""
     min = int(sec / 60)
     sec = sec % 60

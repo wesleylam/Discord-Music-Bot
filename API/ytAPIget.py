@@ -3,7 +3,7 @@ import requests
 import json
 from config import yt_API_key
 from DBFields import SongAttr
-from helper import ISO8601_to_duration, default_init_vol
+from helper import *
 
 def get_yt_suggestions(vID, force_music = True):
     categoryID_get = f"&videoCategoryId={10}"
@@ -45,11 +45,19 @@ def get_yt_results(q, use_vID = False, force_music = True, max_results = 10):
 def yt_search_all(q, n = 5, force_music = True):
     return yt_search(q, False, force_music = force_music, find_all = True, find_all_limit = n)
 
+def yt_search_single(q, use_vID = False, force_music = True) -> SongInfo:
+    return yt_search(q, use_vID, force_music=force_music)
+
 def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all_limit = 5):
     response = get_yt_results(q, use_vID = use_vID, force_music = force_music, max_results = find_all_limit)
-
     songs = []
     items = response['items']
+    # response sanity check
+    if use_vID and len(items) == 1: 
+        eMess = f"Youtube API search responded >1 result when given vID{q}"
+        error_log(eMess)
+        raise Exception(eMess)
+
     for i in range(len(items)):
         item = items[i]
         kind = (item['kind'].split('#')[1]) if use_vID else (item['id']['kind'].split('#')[1])
