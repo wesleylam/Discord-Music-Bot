@@ -35,23 +35,43 @@
 {{ super() }}
 
 <h1 id="response"></h1>
+<button class="btn" id="join" onclick="onClickAction(this.id)">START DJ</button>
 <h1 id="nowplaying_h1">Now Playing</h1>
-<div id="playing_div">
+<div id="playbox">
   <h2 id="title_h2">{{ TITLE }}</h2>
-  <div>
-    <iframe id="vid_iframe" width="420" height="315"
-    src="">
-    </iframe>
+  
+  <div class="container flex">
+    <div id="playing_div">
+      <div>
+        <iframe id="vid_iframe" width="420" height="315" src="">
+        </iframe>
+      </div>
+      <div id="actions">
+        <button class="btn" id="skip" onclick="onClickAction(this.id)">Skip</button>
+        <button class="btn" id="djable" onclick="onClickAction(this.id)">DJable</button>
+        <button class="btn" id="notdjable" onclick="onClickAction(this.id)">Not DJable</button>
+        <button class="btn" id="nodjableskip" onclick="onClickAction(this.id)">Not DJable Skip</button>
+        <button class="btn" id="leave" onclick="onClickAction(this.id)">Leave</button>
+      </div>
+    </div>
+  
+    <!-- SIDE INFO DIV -->
+    <div id="side_div">
+      <div id="info_div">
+        <h3>Song Info:</h3>
+        <div id="info_table">
+          {{ INFO }}
+        </div>
+      </div>
+      <div id="queue_div">
+        <h3>Queue:</h3>
+        <div id="queue_list">{{ QUEUE }}</div>
+      </div>
+    </div>
   </div>
-
-  <h3>Song Info:</h3>
-  <div id="info_div">{{ INFO }}</div>
-  <h3>Queue:</h3>
-  <div id="queue_div">{{ QUEUE }}</div>
-  <br/>
-  <button class="btn" id="djable" onclick="onClickAction(this.id)"}>DJable</button>
-  <button class="btn" id="notdjable" onclick="onClickAction(this.id)"}>Not DJable</button>
-  <button class="btn" id="skip" onclick="onClickAction(this.id)"}>Skip</button>
-  <button class="btn" id="leave" onclick="onClickAction(this.id)"}>Leave</button>
 </div>
+
+<script>
+  showNotPlaying()
+</script>
 {% endblock %}

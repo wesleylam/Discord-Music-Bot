@@ -115,6 +115,9 @@ class ServerControl():
     def getPlayingInfo(self):
         return self.vcControl.getPlayingInfo()
     
+    def updatePlayingInfo(self):
+        self.vcControl.updatePlayingInfo()
+    
     def getQueue(self):
         return self.vcControl.getQueue()
 

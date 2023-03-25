@@ -24,7 +24,7 @@ class DJDB():
         # no need disconnect?
         pass
     
-    def dbItemToSongInfo(item):
+    def dbItemToSongInfo(item) -> SongInfo:
         song = SongInfo(item[SongAttr.vID], item[SongAttr.Title], item[SongAttr.ChannelID])
         for attr in SongAttr.get_all():
             setattr(song, attr, item[attr])
@@ -33,7 +33,7 @@ class DJDB():
 
     # ------------------------ PRIVATE: DB direct actions --------------------------- # 
     # ** no longer private (used in DJ/songinfo) **
-    def db_get(self, vID, get_attrs = None):
+    def db_get(self, vID, get_attrs = None) -> SongInfo:
         # get        
         if get_attrs:
             response = self.table.get_item( 

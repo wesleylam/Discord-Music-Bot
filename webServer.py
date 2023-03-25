@@ -3,7 +3,7 @@ from flask_bootstrap import Bootstrap
 from ServersHub import ServersHub
 from DBFields import SongAttr
 import random
-from helper import vid_to_thumbnail, vid_to_embed_url
+from helper import vid_to_thumbnail, vid_to_embed_url, dict_compare
 import asyncio
 from waitress import serve
 import ServerControl
@@ -11,104 +11,113 @@ import ServerControl
 app = Flask(__name__)
 Bootstrap(app)
 
+############## UTIL FUNC ####################
+def needUpdate(guildId, showingVid, songInfo, serverControl):
+    return showingVid != songInfo.vID or \
+        guildId not in onGoingJSON or \
+        not dict_compare(onGoingJSON[guildId]['songData'], songInfo.dictify_view_info()) or \
+        len(onGoingJSON[guildId]['queue']) != len(serverControl.getQueue())
+    
+def constructSongDataTable(vID):
+    item = ServersHub.djdb.db_get(vID)
+    info = [ [attr, item.get(attr)] for attr in SongAttr.get_all() ]
+    info.append(["DJ Played count", ServersHub.djdb.get_hist_count(vID, dj=True)])
+    info.append(["Total Played count", ServersHub.djdb.get_hist_count(vID, dj=False)])
+    return info
 
-# POST
+def constructReplyJSON(guildId, added):
+    global onGoingJSON
+    if guildId not in onGoingJSON:
+        onGoingJSON[guildId] = {
+            'needUpdate': False,
+            'playing': False,
+            'songData': None,
+            'queue': None,
+        }
+        
+    onGoingJSON[guildId] = onGoingJSON[guildId] | added
+    return jsonify(onGoingJSON[guildId])
+    
+
+######################################### POST ############################################
 @app.post('/server/playing/<guildId>')
 def serverPlaying(guildId):
     showingVid = request.data.decode()
     # print(showingVid)
-    serverControl: ServerControl.ServerControl = ServersHub.getControl(guildId)
-    songInfo = serverControl.getNowplaying()
-    
-    songData = constructSongData(songInfo)
+    serverControl: ServerControl.ServerControl = ServersHub.getControl(guildId) # will return none if not in channel
+    songInfo = serverControl.getNowplaying() if serverControl is not None else None
     
     # not playing
     if songInfo == None:
-        return constructReplyJSON({
+        return constructReplyJSON(guildId, {
             'needUpdate': False,
             'playing': False,
             'songData': None
         })
         
     # no update needed
-    update = needUpdate(showingVid, songInfo, serverControl)
+    update = needUpdate(guildId, showingVid, songInfo, serverControl)
     if not update:
-        return constructReplyJSON({
+        return constructReplyJSON(guildId, {
             'needUpdate': False
         })
-       
+
+    print("NEED UPDATE")
     # actual update
-    return constructReplyJSON({
+    return constructReplyJSON(guildId, {
         'needUpdate': True,
         'playing': True,
-        'songData': songData,
+        'songData': songInfo.dictify_view_info(),
         'queue': [ f"{author}: {info.Title}" for source, info, author in serverControl.getQueue() ],
     })
-    
-def needUpdate(showingVid, songInfo, serverControl):
-    
-    return showingVid != songInfo.vID or \
-        len(onGoingJSON['queue']) != len(serverControl.getQueue())
-    
 
-def constructSongData(songInfo):
-    import SongInfo
-    songInfo: SongInfo.SongInfo = songInfo
-    
-    return {
-        'title': songInfo.Title,
-        'vID': songInfo.vID,
-        'djable': songInfo.get(SongAttr.DJable),
-        'duration': songInfo.get(SongAttr.Duration),
-        'thumbnailUrl': vid_to_thumbnail(songInfo.vID),
-        'embedUrl': vid_to_embed_url(songInfo.vID), 
-        'songInfoStr': str(songInfo)
-    } if songInfo else None
-
-def constructReplyJSON(added):
-    global onGoingJSON
-    onGoingJSON = onGoingJSON | added
-    return jsonify(onGoingJSON)
-    
-    
 
 @app.post('/server/action/<guildId>')
 def djAction(guildId):
     print("DJACTION ")
     print(guildId)
-    actions = ['skip', 'leave', 'djable', 'notdjable']
+    actions = ['skip', 'leave', 'djable', 'notdjable', 'notdjable;skip']
     decoded = request.data.decode()
     # print(decoded)
-    actionId, vID = decoded.split(',')
-    print(actionId)
+    actionIds, vID = decoded.split(',')
+    print(actionIds)
     
-    response = ""
-    if actionId == 'skip':
-        ServersHub.getControl(guildId).skip("WEB")
-        response = ""
-        
-    if actionId == 'leave':
-        ServersHub.getControl(guildId).disconnect()
-        response = ""
-        
-    if actionId == 'djable':
-        response = f"{vID} is now DJable"
-        ServersHub.djdb.set_djable(vID, True)
-        
-    if actionId == 'notdjable':
-        response = f"{vID} is now NOT DJable"
-        ServersHub.djdb.set_djable(vID, False)
+    response = []
+    for actionId in actionIds.split(';'):
+        if actionId == 'join':
+            task: asyncio.Task = ServersHub.loop.create_task(ServersHub.DJ_BOT.dj(guildId))
+            # wait until done
+            while not task.done(): pass
+            response.append("Joined")
+            
+        if actionId == 'skip':
+            ServersHub.getControl(guildId).skip("WEB")
+            response.append("Skipped")
+            
+        if actionId == 'leave':
+            ServersHub.getControl(guildId).disconnect()
+            response.append("Leaving")
+            
+        if actionId == 'djable':
+            response.append(f"{vID} is now DJable")
+            ServersHub.djdb.set_djable(vID, True)
+            ServersHub.getControl(guildId).updatePlayingInfo()
+            
+        if actionId == 'notdjable':
+            response.append(f"{vID} is now NOT DJable")
+            ServersHub.djdb.set_djable(vID, False)
+            ServersHub.getControl(guildId).updatePlayingInfo()
     
     data = {
         'name': random.randint(100, 200),
-        'response': response
+        'response': ";".join(response)
     }
     
     return jsonify(data)
 
 
 
-# GET
+#################################### GET ############################################
 @app.route('/server/<guildId>')
 def server(guildId):
     return render_template('server.html', guildId = guildId)
@@ -116,10 +125,8 @@ def server(guildId):
 @app.route('/song/<vID>')
 def song(vID):
     item = ServersHub.djdb.db_get(vID)
-    info = [ [attr, item.get(attr)] for attr in SongAttr.get_all() ]
-    info.append(["DJ Played count", ServersHub.djdb.get_hist_count(vID, dj=True)])
-    info.append(["Total Played count", ServersHub.djdb.get_hist_count(vID, dj=False)])
-    
+    info = constructSongDataTable(vID)
+
     options = build_table_options(info, headers = None)
     return render_template('index.html', table_title = getattr(item, SongAttr.Title), **options)
 
@@ -170,18 +177,10 @@ def build_table_options(info, headers = None):
     # return render_template('table.html', **options)
 
 
-def runServer():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
+def runServer():    
     global onGoingJSON
     # default response
-    onGoingJSON = {
-        'needUpdate': False,
-        'playing': False,
-        'songData': None,
-        'queue': None,
-    }
+    onGoingJSON = {} # one json per guild
 
     hostName = "0.0.0.0"
     serverPort = 8080

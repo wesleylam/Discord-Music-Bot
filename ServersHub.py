@@ -4,10 +4,11 @@ from DJDynamoDB import DJDB
 import youtube_dl
 from options import ytdl_format_options
 
-# static class
+# static class for global
 class ServersHub():
     djdb: DJDB = None
     serverControls = {} # guild.id: vcControl object
+    DJ_BOT = None
     
     # initialise ytdl from youtube_dl library
     ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
@@ -24,7 +25,7 @@ class ServersHub():
 
         
     def getControl(id) -> ServerControl.ServerControl:
-        return ServersHub.serverControls[str(id)]
+        return ServersHub.serverControls[str(id)] if str(id) in ServersHub.serverControls else None
         
     def getAllControls() -> dict[str, ServerControl.ServerControl]:
         return ServersHub.serverControls

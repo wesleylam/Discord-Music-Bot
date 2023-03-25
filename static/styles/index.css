@@ -1,6 +1,15 @@
 body {
-    margin: 50px;
+    margin: 5%;
 }
 #response{
     color: red;
+}
+.flex{
+    width: 100%;
+    display: flex;
+    margin: 0%;
+    padding:0%
+}
+#side_div{
+    margin-left: 5%;
 }

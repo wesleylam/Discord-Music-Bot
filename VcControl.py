@@ -45,11 +45,20 @@ class VcControl():
     # --------------------------------------------------------------------------- # 
     # ----------------------------- GETTERS ---------------------------------------- # 
     # --------------------------------------------------------------------------- # 
-    def getPlayingInfo(self) -> SongInfo:
+    def getPlayingInfo(self) -> tuple[SongInfo, str]:
         return self.playingInfo
     
     def getNowplaying(self) -> (SongInfo):
         return self.playingSong
+    
+    def updatePlayingInfo(self):
+        info = self.getNowplaying()
+        if info is None: return 
+        
+        newInfo = self.Hub.djdb.db_get(info.get(SongAttr.vID))
+        self.playingSong = newInfo
+        _, player = self.getPlayingInfo()
+        self.playingInfo = (newInfo, player)
 
     def getQueue(self):
         '''list/ playlist'''

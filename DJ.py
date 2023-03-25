@@ -1,7 +1,6 @@
 import os
 import discord
 from discord.ext import commands
-# from discord_components import ComponentsBot
 import asyncio
 
 from Views import Views
@@ -14,14 +13,10 @@ from options import *
 
 class DJ(commands.Cog):
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: commands.Bot = bot
         self.Hub = ServersHub.ServersHub
 
-        # mysql
-        # self.djdb = DJDB(mysql_host, mysql_user, mysql_password, mysql_db_name)
-        # dynamodb
-        # SourceCompile.djdb = DJDB()
-        # SourceCompile.djdb.connect()
+        ServersHub.ServersHub.DJ_BOT = self
 
     # ---------------------------- MESSAGING --------------------------- # 
     async def notify(self, ctx, message, del_sec = 10):
@@ -61,25 +56,52 @@ class DJ(commands.Cog):
 
     # -------------------- Join voice channel -------------------- #
     @commands.command()
-    async def join(self, ctx, silence = False):
+    async def join(self, ctx, silence = False, warning = True):
         '''Let bot join the voice channel (caller's channel / most populated channel)'''
-        print(ctx.guild.id)
-        if ctx.voice_client is None:
-            vc = get_channel_to_join(ctx)
+        print("JOINING ", ctx)
+        if type(ctx) == str:
+            # use guild id to fetch guild
+            guild = await self.bot.fetch_guild(ctx)
+            channels = await guild.fetch_channels()
+            # await guild.fetch_members()
+            print(len(channels))
+            print(channels)
+            # to be customizable
+            author = None
+            voice_channels = []
+            message_channel = None
+            # get voice and message (first only) channel
+            for c in channels:                
+                if type(c) == discord.VoiceChannel:
+                    voice_channels.append(await guild.fetch_channel(c.id))
+                    # vc: discord.VoiceChannel = c
+                if message_channel is None and type(c) == discord.TextChannel:
+                    message_channel = await guild.fetch_channel(c.id)
+                    
+        else:
+            guild = ctx.guild
+            author = ctx.author
+            message_channel = ctx.channel
+            voice_channels = ctx.guild.voice_channels
+            
+        if guild.voice_client is None:
+            vc = get_channel_to_join(voice_channels, author=author)
             await vc.connect()
             if not silence:
                 # show patch note
-                await self.patchnote(ctx)
-                await self.notify(ctx, f'DJ2.0 is here! http://weslam.ddns.net:42069', None)
+                await self.patchnote(message_channel)
+                await self.notify(message_channel, f'DJ2.0 is here! http://weslam.ddns.net:42069', None)
                 
             # create new control instance, send current channel for further messaging
             self.Hub.add(
-                ctx.guild.id, ctx.voice_client, ctx.guild, ctx.channel
+                guild, guild.voice_client, message_channel
             )
         else: 
-            n = ctx.voice_client.channel.name
-            if not silence:
-                await self.notify(ctx, f"I am in voice channel: {n}", del_sec=60)
+            n = guild.voice_client.channel.name
+            if not silence and not warning:
+                await self.notify(message_channel, f"I am in voice channel: {n}", del_sec=60)
+                
+        return guild.id
 
     # -------------------- Leave voice channel --------------------
     @commands.command(aliases=['l'])
@@ -95,15 +117,17 @@ class DJ(commands.Cog):
     # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
     @commands.command()
-    async def dj(self, ctx, type = True):
+    async def dj(self, ctx, dj_type = True):
         '''Turn on DJ'''
-        vc = ctx.voice_client
-        if type and vc is None:
-            await self.join(ctx)
+        if dj_type:
+            if type(ctx) == str or ctx.voice_client is None: # if sent from discord (i.e. context given), check vc exist first 
+                guild_id = await self.join(ctx)
+        else:
+            guild_id = ctx.guild.id
 
         # set vccontrol and bot status
-        self.Hub.getControl(ctx.guild.id).dj( type )
-        await self.bot_status(dj = type)
+        self.Hub.getControl(guild_id).dj( dj_type )
+        await self.bot_status(dj = dj_type)
         
     # COMMAND: djoff
     @commands.command()

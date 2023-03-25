@@ -1,4 +1,4 @@
-from helper import default_init_vol
+from helper import *
 from DBFields import SongAttr
 class SongInfo():
 
@@ -34,3 +34,17 @@ class SongInfo():
             "Title": getattr(self, SongAttr.Title),
             "ChannelID": getattr(self, SongAttr.ChannelID)
         }
+        
+    def dictify_view_info(self):
+        return {
+            SongAttr.Title: self.Title,
+            SongAttr.vID: self.vID,
+            SongAttr.DJable: self.get(SongAttr.DJable),
+            SongAttr.Duration: self.get(SongAttr.Duration),
+            'thumbnailUrl': vid_to_thumbnail(self.vID),
+            'embedUrl': vid_to_embed_url(self.vID)
+        }
+        
+    def __eq__(self, __o: object) -> bool:
+        return type(__o) is SongInfo and \
+            all([ self.get(attr) == __o.get(attr) for attr in SongAttr.get_all() ]) # all attr match
