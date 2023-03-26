@@ -1,9 +1,9 @@
-from SongInfo import SongInfo
+from const.SongInfo import SongInfo
 import requests
 import json
-from config import yt_API_key
-from DBFields import SongAttr
-from helper import *
+from const.config import yt_API_key
+from const.DBFields import SongAttr
+from const.helper import *
 
 def get_yt_suggestions(vID, force_music = True):
     categoryID_get = f"&videoCategoryId={10}"
@@ -37,7 +37,7 @@ def get_yt_results(q, use_vID = False, force_music = True, max_results = 10):
     }
     r = requests.get(url = url, params = params) 
     response = r.json() 
-    with open('yt_search.json', 'w') as f:
+    with open('./logs/yt_search.json', 'w') as f:
         json.dump(response, f)
 
     return response

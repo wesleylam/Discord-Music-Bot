@@ -1,9 +1,9 @@
 from flask import Flask, render_template, jsonify, request
 from flask_bootstrap import Bootstrap
 from ServersHub import ServersHub
-from DBFields import SongAttr
+from const.DBFields import SongAttr
 import random
-from helper import vid_to_thumbnail, vid_to_embed_url, dict_compare
+from const.helper import vid_to_thumbnail, vid_to_embed_url, dict_compare
 import asyncio
 from waitress import serve
 import ServerControl

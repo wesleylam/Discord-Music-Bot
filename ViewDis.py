@@ -1,10 +1,10 @@
 import asyncio
 from ViewBase import ViewBase
 import ViewDisMes
-import SongInfo
-from DBFields import SongAttr
+from const import SongInfo
+from const.DBFields import SongAttr
 import ServersHub
-from helper import *
+from const.helper import *
 import discord
 
 class ViewDis(ViewBase):

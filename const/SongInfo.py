@@ -1,5 +1,5 @@
-from helper import *
-from DBFields import SongAttr
+from const.helper import *
+from const.DBFields import SongAttr
 class SongInfo():
 
     def __init__(self, vID, title, channelID, thumbnailURL = "", duration = None) -> None:

@@ -3,9 +3,9 @@ import discord
 import asyncio
 from API.tenorAPIget import get_tenor_gif
 from SongManager import SongManager
-from options import ffmpeg_error_log, default_init_vol, leaving_gif_search_list
-from helper import *
-from SongInfo import SongInfo
+from const.options import ffmpeg_error_log, default_init_vol, leaving_gif_search_list
+from const.helper import *
+from const.SongInfo import SongInfo
 import SourceCompile
 from API.ytAPIget import *
 import random

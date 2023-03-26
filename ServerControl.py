@@ -3,8 +3,8 @@ from DJDynamoDB import DJDB
 from ViewBase import ViewBase
 import SourceCompile
 import ServersHub 
-import YTDLException
-from SongInfo import SongInfo
+from exceptions import YTDLException
+from const.SongInfo import SongInfo
 from ViewWeb import ViewWeb
 from ViewDis import ViewDis
 import time

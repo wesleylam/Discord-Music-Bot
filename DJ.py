@@ -7,9 +7,9 @@ from Views import Views
 from API.tenorAPIget import get_tenor_gif
 import ServersHub
 
-from helper import *
-from config import *
-from options import *
+from const.helper import *
+from const.config import *
+from const.options import *
 
 class DJ(commands.Cog):
     def __init__(self, bot):

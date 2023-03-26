@@ -1,6 +1,6 @@
 from tokenize import String
-from SongInfo import SongInfo
-from DBFields import SongAttr
+from const.SongInfo import SongInfo
+from const.DBFields import SongAttr
 
 class SongManager():
     def __init__(self) -> None:

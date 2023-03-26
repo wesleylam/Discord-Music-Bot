@@ -1,11 +1,11 @@
-from DJExceptions import DJDBException
+from exceptions.DJExceptions import DJDBException
 from botocore.exceptions import ClientError
-from config import dynamodb_table, dynamodb_hist_table
-from options import default_init_vol
-from SongInfo import SongInfo
+from const.config import dynamodb_table, dynamodb_hist_table
+from const.options import default_init_vol
+from const.SongInfo import SongInfo
 import random
-from DBFields import SongAttr, HistAttr
-from helper import error_log, error_log_e, get_time, vid_to_thumbnail, chop_query
+from const.DBFields import SongAttr, HistAttr
+from const.helper import error_log, error_log_e, get_time, vid_to_thumbnail, chop_query
 
 # aws
 import boto3

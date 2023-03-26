@@ -1,5 +1,5 @@
 import requests
-from config import tenor_API_key
+from const.config import tenor_API_key
 import random
 
 # https://g.tenor.com/v1/search?q=hellopeter&key=SFH88A4GZYO2&limit=5

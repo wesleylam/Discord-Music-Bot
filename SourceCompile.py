@@ -1,14 +1,13 @@
-from helper import *
-from DJExceptions import *
+from const.helper import *
 import ServersHub
 from API.ytAPIget import yt_search_single
-from YTDLSource import YTDLSource, StaticSource
+from const.YTDLSource import YTDLSource, StaticSource
 from youtube_dl.utils import DownloadError
-from DBFields import SongAttr
+from const.DBFields import SongAttr
 import discord
 
-from DJExceptions import DJDBException, DJBannedException, DJSongNotFoundException
-from YTDLException import YTDLException
+from exceptions.DJExceptions import DJDBException, DJBannedException, DJSongNotFoundException
+from exceptions.YTDLException import YTDLException
 
 
 
@@ -68,8 +67,8 @@ def scp_search(s, DBonly = False, newDJable = True):
     match = ServersHub.ServersHub.djdb.find_query_match(search_term)
     if match:
         # insert to db if not in db (Depreciated, safety catch)
-        if not ServersHub.ServersHub.djdb.find_song_match(getattr(match, SongAttr.vID)):
-            error_log(f"(Unexpected behaviour) Query found but song not in DB: {search_term} -> {vid}")
+        if not ServersHub.ServersHub.djdb.find_song_match(match.get(SongAttr.vID)):
+            error_log(f"(Unexpected behaviour) Query found but song not in DB: {search_term} -> {match.get(SongAttr.vID)}")
             yt_search_and_insert(getattr(match, SongAttr.vID), use_vID = True, newDJable = newDJable)
         return match
                 
