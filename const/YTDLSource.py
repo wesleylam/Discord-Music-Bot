@@ -1,5 +1,5 @@
 import discord
-from options import default_init_vol
+from const.options import default_init_vol
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=default_init_vol):

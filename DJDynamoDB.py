@@ -1,11 +1,11 @@
-from DJExceptions import DJDBException
+from exceptions.DJExceptions import DJDBException
 from botocore.exceptions import ClientError
-from config import dynamodb_table, dynamodb_hist_table
-from options import default_init_vol
-from SongInfo import SongInfo
+from const.config import dynamodb_table, dynamodb_hist_table
+from const.options import default_init_vol
+from const.SongInfo import SongInfo
 import random
-from DBFields import SongAttr, HistAttr
-from helper import error_log, error_log_e, get_time, vid_to_thumbnail
+from const.DBFields import SongAttr, HistAttr
+from const.helper import error_log, error_log_e, get_time, vid_to_thumbnail, chop_query
 
 # aws
 import boto3
@@ -24,7 +24,7 @@ class DJDB():
         # no need disconnect?
         pass
     
-    def dbItemToSongInfo(item):
+    def dbItemToSongInfo(item) -> SongInfo:
         song = SongInfo(item[SongAttr.vID], item[SongAttr.Title], item[SongAttr.ChannelID])
         for attr in SongAttr.get_all():
             setattr(song, attr, item[attr])
@@ -33,7 +33,7 @@ class DJDB():
 
     # ------------------------ PRIVATE: DB direct actions --------------------------- # 
     # ** no longer private (used in DJ/songinfo) **
-    def db_get(self, vID, get_attrs = None):
+    def db_get(self, vID, get_attrs = None) -> SongInfo:
         # get        
         if get_attrs:
             response = self.table.get_item( 
@@ -65,11 +65,6 @@ class DJDB():
             ExpressionAttributeValues={ ':val': val }
         )
 
-    def chop_query(self, query):
-        words = query.split(" ")
-        words.sort()
-        return words
-
 
     def match_query_action(self, query, match_return = None, 
         q_match_break = False, action_after_q_match = (lambda : None), action_after_v_match = (lambda : None)):
@@ -88,7 +83,7 @@ class DJDB():
             return None
         else:
             # current query chopped into words and sorted
-            query_words = self.chop_query(query)
+            query_words = chop_query(query)
 
             # HEAVY: for each video, for each query O(v*q)
             for v in items:
@@ -120,14 +115,15 @@ class DJDB():
             song_exist = True 
 
         # add song to db (if not exist)
-        if not song_exist: self.insert_song(songInfo)
+        if not song_exist: 
+            song, inserted = self.insert_song(songInfo)
+        else:
+            song = self.db_get(vID, [SongAttr.Queries])
+            
         vID = songInfo.vID
 
-        # get song query (must find song, cannot cause error, song added above)
-        song = self.db_get(vID, [SongAttr.Queries])
-
         # transform query into tokens
-        query_words = self.chop_query(query.lower())
+        query_words = chop_query(query.lower())
 
         # check for duplicate
         for q in song[SongAttr.Queries]:
@@ -161,17 +157,17 @@ class DJDB():
 
 
     # insert one song
-    def insert_song(self, songInfo, qcount = 0, songVol = default_init_vol, newDJable = True):
+    def insert_song(self, songInfo, qcount = 0, songVol = default_init_vol, newDJable = True, query=None):
         song = self.find_song_match(songInfo.vID)
         if song:
             # skip if song exist
-            return False
+            return song, False
         print(f"Song not found {songInfo.vID} in DB, inserting to DB")
 
         # get all info and default parameters
         item = songInfo.dictify_info()    
         item[SongAttr.STitle] = item[SongAttr.Title].lower()
-        item[SongAttr.Queries] = []
+        item[SongAttr.Queries] = [] if query == None else [ [chop_query(query.lower())] ]
         item[SongAttr.DJable] = newDJable
         item[SongAttr.SongVol] = int(songVol * 100) # as percentage (need int)
         item[SongAttr.Duration] = 0
@@ -179,7 +175,7 @@ class DJDB():
 
         # add to db
         self.table.put_item(Item = item)
-        return True
+        return DJDB.dbItemToSongInfo(item), True
 
     # remove song and all its queries
     def remove_song(self, vid):
@@ -306,7 +302,7 @@ class DJDB():
             return None
         else:
             # current query chopped into words and sorted
-            query_words = self.chop_query(query.lower())
+            query_words = chop_query(query.lower())
 
             # HEAVY
             for item in items:
@@ -387,7 +383,7 @@ class DJDB():
             return title_searched_songs
         else:
             # current query chopped into words and sorted
-            query_words = self.chop_query(search_term.lower())
+            query_words = chop_query(search_term.lower())
             query_searched_songs = []
             # HEAVY
             for item in items:

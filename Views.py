@@ -3,12 +3,11 @@ from aiohttp import ClientError
 import discord
 from discord import ButtonStyle
 from discord.ui import Button
-from options import patch_note_log
-from helper import *
+from const.options import patch_note_log
+from const.helper import *
 from enum import Enum
 import time
-from DJDynamoDB import DJDB
-from DBFields import SongAttr
+from const.DBFields import SongAttr
 from aiohttp.client_exceptions import ClientOSError
 
 class ViewUpdateType(Enum):
