@@ -11,6 +11,9 @@ class ViewBase():
     def songInfoUpdated():
         pass
         
+    def songAdded(self):
+        pass
+        
     def queueUpdated(self):
         pass
     

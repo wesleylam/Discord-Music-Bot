@@ -11,7 +11,7 @@ from const.helper import *
 from const.config import *
 from const.options import *
 
-class DJ(commands.Cog):
+class DJCog(commands.Cog):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
         self.Hub = ServersHub.ServersHub
@@ -90,7 +90,7 @@ class DJ(commands.Cog):
             if not silence:
                 # show patch note
                 await self.patchnote(message_channel)
-                await self.notify(message_channel, f'DJ2.0 is here! http://weslam.ddns.net:42069', None)
+                await self.notify(message_channel, f'DJ2.0 is here! http://weslam.ddns.net:42069/{guild.id}', None)
                 
             # create new control instance, send current channel for further messaging
             self.Hub.add(
@@ -119,9 +119,8 @@ class DJ(commands.Cog):
     @commands.command()
     async def dj(self, ctx, dj_type = True):
         '''Turn on DJ'''
-        if dj_type:
-            if type(ctx) == str or ctx.voice_client is None: # if sent from discord (i.e. context given), check vc exist first 
-                guild_id = await self.join(ctx)
+        if type(ctx) == str or ctx.voice_client is None: # if sent from discord (i.e. context given), check vc exist first :
+            guild_id = await self.join(ctx)
         else:
             guild_id = ctx.guild.id
 
@@ -347,7 +346,7 @@ async def startDJ():
                         description='DJ', intents=intents)
     
     try: 
-        await bot.add_cog(DJ(bot))
+        await bot.add_cog(DJCog(bot))
         await bot.start(TOKEN) 
     except Exception:
         await bot.close()

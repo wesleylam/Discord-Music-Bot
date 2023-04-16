@@ -26,6 +26,8 @@ class DJDB():
     
     def dbItemToSongInfo(item) -> SongInfo:
         song = SongInfo(item[SongAttr.vID], item[SongAttr.Title], item[SongAttr.ChannelID])
+        if SongAttr.SongVol in item:
+            item[SongAttr.SongVol] = item[SongAttr.SongVol] / 100 # Scale down from percentage
         for attr in SongAttr.get_all():
             setattr(song, attr, item[attr])
         return song
@@ -45,8 +47,6 @@ class DJDB():
 
         try:
             item = response['Item']
-            if SongAttr.SongVol in item:
-                item[SongAttr.SongVol] = item[SongAttr.SongVol] / 100 # Scale down from percentage
             return DJDB.dbItemToSongInfo(item)
         except KeyError as e:
             raise DJDBException(f"No item for vID: {vID}")
@@ -126,7 +126,7 @@ class DJDB():
         query_words = chop_query(query.lower())
 
         # check for duplicate
-        for q in song[SongAttr.Queries]:
+        for q in song.get(SongAttr.Queries):
             if q == query_words:
                 # skip: duplicate
                 return 
@@ -144,7 +144,7 @@ class DJDB():
         # get all queries
         song = self.db_get(vID, [SongAttr.Queries])
         try: 
-            i = song[SongAttr.Queries].index(query)
+            i = song.get(SongAttr.Queries).index(query)
         except ValueError as e:
             raise DJDBException(f"No query ({query}) binded for video ({vID}): {e.message}")
 

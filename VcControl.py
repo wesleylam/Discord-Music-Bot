@@ -13,6 +13,8 @@ import ServersHub
 
 from API.ytAPIget import yt_search_suggestions
 
+DJAuthor: str = 'DJ'
+
 class VcControl():
     def __init__(self, id, g_name, vc, loop) -> None:
         self.vc: discord.VoiceClient = vc
@@ -74,7 +76,7 @@ class VcControl():
     # --------------------------------------------------------------------------- # 
     def startPlayLoop(self):
         '''Add exec loop to current asyncio loop'''
-        asyncio.create_task(self.execLoop())
+        self.asyncLoop.create_task(self.execLoop())
 
     async def execLoop(self):
         '''execute actions periodically, manage conflict actions and terminate vc controls'''
@@ -84,7 +86,7 @@ class VcControl():
         
         self.started = True
         try:
-            while(self.vc):
+            while(self.vc is not None):
                 self.exec()
                 await asyncio.sleep(1)
         except Exception as e:
@@ -184,7 +186,7 @@ class VcControl():
             vid_to_url(vid),
             {
                 "newDJable": True,
-                "author": "DJ"
+                "author": DJAuthor 
             },
             suggested
         )
@@ -241,9 +243,6 @@ class VcControl():
     # --------------------------------------------------------------------------- # 
     # ----------------------------- ACTIONS ---------------------------------------- # 
     # --------------------------------------------------------------------------- # 
-    async def disconnect(self):
-        self.vc.stop()
-        await self.vc.disconnect()
 
     def set_dj_type(self, dj: boolean):
         self.dj = dj

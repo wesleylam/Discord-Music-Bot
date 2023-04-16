@@ -20,5 +20,8 @@ class ViewWeb(ViewBase):
     def songInfoUpdated(self):
         self.song_info_updated = True
         
+    def songAdded(self, songInfo):
+        pass
+        
     def queueUpdated(self):
         self.queue_updated = True

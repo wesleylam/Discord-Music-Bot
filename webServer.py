@@ -3,10 +3,11 @@ from flask_bootstrap import Bootstrap
 from ServersHub import ServersHub
 from const.DBFields import SongAttr
 import random
-from const.helper import vid_to_thumbnail, vid_to_embed_url, dict_compare
+from const.helper import vid_to_url, vid_to_thumbnail, vid_to_embed_url, dict_compare
 import asyncio
 from waitress import serve
 import ServerControl
+import API.ytAPIget
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -76,13 +77,14 @@ def serverPlaying(guildId):
 def djAction(guildId):
     print("DJACTION ")
     print(guildId)
-    actions = ['skip', 'leave', 'djable', 'notdjable', 'notdjable;skip']
+    actions = ['skip', 'leave', 'djable', 'notdjable', 'notdjable;skip', 'search', 'play']
     decoded = request.data.decode()
     # print(decoded)
-    actionIds, vID = decoded.split(',')
+    actionIds, vID, action_input = decoded.split(',')
     print(actionIds)
     
     response = []
+    song_choices = None
     for actionId in actionIds.split('__'):
         if actionId == 'join':
             task: asyncio.Task = ServersHub.loop.create_task(ServersHub.DJ_BOT.dj(guildId))
@@ -93,6 +95,17 @@ def djAction(guildId):
         if actionId == 'skip':
             ServersHub.getControl(guildId).skip("WEB")
             response.append("Skipped")
+            
+        if actionId == 'search':
+            import const.SongInfo
+            songs = API.ytAPIget.yt_search_all(action_input)
+            song_choices = {song.get(SongAttr.vID): song.get(SongAttr.Title) for song in songs}
+            
+        if actionId == 'play':
+            # input will be vid
+            url = vid_to_url(action_input)
+            ServersHub.getControl(guildId).play(url, author='Web')
+            response.append(f"Queued {url}")
             
         if actionId == 'leave':
             ServersHub.getControl(guildId).disconnect()
@@ -110,7 +123,11 @@ def djAction(guildId):
     
     data = {
         'name': random.randint(100, 200),
-        'response': ";".join(response)
+        # 'response': ";".join(response),
+        'response': {
+            'top_notify': " / ".join(response),
+            'song_choices': 'null' if song_choices is None else song_choices
+        },
     }
     
     return jsonify(data)

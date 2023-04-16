@@ -9,8 +9,6 @@ import discord
 from exceptions.DJExceptions import DJDBException, DJBannedException, DJSongNotFoundException
 from exceptions.YTDLException import YTDLException
 
-
-
 def getSource(args, newDJable = True, loud = False, baseboost = False):
     # 1. parse and search
     songInfo = process_song_input(args, newDJable = newDJable)

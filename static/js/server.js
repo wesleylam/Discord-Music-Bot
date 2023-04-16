@@ -31,10 +31,10 @@ function fetchServer(showingVid, setShowingVid) {
             const info_table = document.getElementById("info_table")
             info_table.innerHTML = '';
             info_table.append(data.songData.vID);
-            info_table.append(document.createElement('br'));
-            info_table.append(data.songData.Title);
-            info_table.append(document.createElement('br'));
-            info_table.append(data.songData.DJable);
+            info_table.append('\t|\t');
+            info_table.append(data.songData.DJable ? 'DJable' : 'non-DJable');
+            info_table.append('\t|\t');
+            info_table.append(data.songData.Duration);
             
             if (data.songData.DJable === true) {
                 document.getElementById("djable").classList.add("hidden");
@@ -45,8 +45,9 @@ function fetchServer(showingVid, setShowingVid) {
                 document.getElementById("notdjable").classList.add("hidden");
                 document.getElementById("notdjable__skip").classList.add("hidden");
             }
-            info_table.append(document.createElement('br'));
-            info_table.append(data.songData.Duration);
+
+            const songinfo_link_btn = document.getElementById("songInfo_a")
+            songinfo_link_btn.href = "http://weslam.ddns.net/song/" + data.songData.vID
             
             // QUEUE INFO
             document.getElementById("queue_list").innerHTML = '';
@@ -68,27 +69,91 @@ function fetchServer(showingVid, setShowingVid) {
     })
 }
 
+
+// ----------------------------------- ACTIONS --------------------------------- //
+function baseOnClickCallback(data) {
+    // data is a parsed JSON object
+    console.log("ONCLICK REPLY")
+    console.log(data)
+    document.getElementById('response').innerHTML = data.response.top_notify;
+    doFetchServer();
+}
+
+function onClickPlay(vid) {
+    result_div = document.getElementById('search_result_div');
+    result_div.innerHTML = "";
+
+    return actionFetch('play', vid, (data) => {
+        baseOnClickCallback(data);
+    })
+}
+
 function onClickAction(actionId) {
     if (actionId === "join") {
         // or add loading
         document.getElementById('response').innerHTML = "JOINING"
     }
+    
+    let action_input = null;
+    if (actionId === "search") {
+        action_input = document.getElementById('search_input').value
+    }
+    console.log('input value: ')
+    console.log(action_input)
 
+    return actionFetch(actionId, action_input, (data) => {
+        console.log(actionId)
+        baseOnClickCallback(data);
+        document.getElementById(actionId).disabled = false;
+
+        if (data.response.song_choices != "null") { updateSongChoices(data.response.song_choices) };
+    });
+}
+
+function actionFetch(actionId, action_input, callback) {
     fetch(actionUrl, 
         { 
             "method": "POST",
             // will decoded as text, might need better encoding
-            "body": [actionId, showingVid]
+            "body": [actionId, showingVid, action_input]
         }
         )
         .then(response => response.json())
-        .then(data => {
-            // data is a parsed JSON object
-            console.log("ONCLICK REPLY")
-            console.log(actionId)
-            console.log(data)
-            document.getElementById('response').innerHTML = data.response
-            document.getElementById(actionId).disabled = false;
-            doFetchServer()
-        })
+        .then(callback)
+}
+
+function updateSongChoices(songs) {
+    result_div = document.getElementById('search_result_div');
+    result_div.innerHTML = "";
+    const p = document.createElement('p');
+    p.innerHTML = "Search Results: ";
+    result_div.append(p)
+    for (let vid in songs) {
+        result_div.append(createSongChoice(vid, songs[vid]))
+    }
+}
+
+function createSongChoice(vid, title) {
+    // {vID: Title} 
+    const flex_div = document.createElement('div');
+    flex_div.classList.add('flex');
+
+    const p = document.createElement('p');
+    p.innerHTML = title;
+    flex_div.append(p)
+    
+    const btn = document.createElement('button')
+    btn.classList.add('btn')
+    btn.id = 'play'
+    btn.onclick = function() { onClickPlay(vid) }
+    btn.innerHTML = "Play"
+    flex_div.append(btn)
+
+    return flex_div
+}
+
+function inputSubmit(elem) {
+    if(event.key === 'Enter') {
+        onClickAction('search')
+    }
 }

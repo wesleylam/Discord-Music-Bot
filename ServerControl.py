@@ -63,8 +63,8 @@ class ServerControl():
         self.vcControl.addSong(source, song_info, author, insert = insert)
 
         # View control
-        self.viewsList.queueUpdated()
-        # self.viewsList.songAdded(song_info)
+        if author != VcControl.DJAuthor:
+            self.viewsList.songAdded(song_info)
 
     def skip(self, author=None):
         self.vcControl.skip(author)
@@ -183,6 +183,9 @@ class ViewsList():
         pass
     
     def songAdded(self, song: SongInfo):
+        for v in self.views:
+            v.songAdded(song)
+        self.queueUpdated()
         pass
     
     def updateSongInfo(self, new_song_info: SongInfo):

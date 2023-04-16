@@ -42,10 +42,10 @@ def get_yt_results(q, use_vID = False, force_music = True, max_results = 10):
 
     return response
 
-def yt_search_all(q, n = 5, force_music = True):
+def yt_search_all(q, n = 5, force_music = True) -> list[SongInfo]:
     return yt_search(q, False, force_music = force_music, find_all = True, find_all_limit = n)
 
-def yt_search_single(q, use_vID = False, force_music = True) -> SongInfo:
+def yt_search_single(q, use_vID = False, force_music = True) -> SongInfo | None:
     return yt_search(q, use_vID, force_music=force_music)
 
 def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all_limit = 5):
@@ -53,10 +53,10 @@ def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all
     songs = []
     items = response['items']
     # response sanity check
-    if use_vID and len(items) == 1: 
-        eMess = f"Youtube API search responded >1 result when given vID{q}"
-        error_log(eMess)
-        raise Exception(eMess)
+    # if use_vID and len(items) == 1: 
+    #     eMess = f"Youtube API search responded >1 result when given vID{q}"
+    #     error_log(eMess)
+    #     raise Exception(eMess)
 
     for i in range(len(items)):
         item = items[i]
@@ -73,7 +73,7 @@ def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all
             if find_all:
                 songs.append(song)
             else:
-                if use_vID:
+                if use_vID or ('contentDetails' in item and 'duration' in item['contentDetails']):
                     song.duration = ISO8601_to_duration( item['contentDetails']['duration'] )
                 # return single song only
                 return song

@@ -6,6 +6,7 @@ from const.DBFields import SongAttr
 import ServersHub
 from const.helper import *
 import discord
+from const import helper
 
 class ViewDis(ViewBase):
     def __init__(self, id, message_channel, loop) -> None:
@@ -75,6 +76,10 @@ class ViewDis(ViewBase):
     
     def songInfoUpdated(self):
         self.song_info_updated = True
+        
+    def songAdded(self, songInfo: SongInfo):
+        asyncio.ensure_future(self.Hub.DJ_BOT.notify(self.message_channel, f'Queued song: {helper.vid_to_url(songInfo.get(SongAttr.vID))}'), loop=self.loop)
+        self.queue_updated = True
         
     def queueUpdated(self):
         self.queue_updated = True
