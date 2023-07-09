@@ -91,7 +91,7 @@ def yt_search_and_insert(search_term, use_vID = False, insert_after = True, newD
     # no result from youtube api (by vid)
     if not info: 
         if use_vID: raise DJSongNotFoundException(f"No video found: {vid_to_url(search_term)}")
-        else: raise DJSongNotFoundException(f"Nothing found in video form: {search_term}")
+        else: raise DJSongNotFoundException(f"No result found: {search_term}")
 
     if insert_after: 
         return ServersHub.ServersHub.djdb.insert_song(info, newDJable = newDJable, query=search_term)

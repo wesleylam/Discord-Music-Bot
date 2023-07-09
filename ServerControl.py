@@ -107,6 +107,9 @@ class ServerControl():
         if self.counting_song and self.counting_start_time and self.counting_song == vID:
             ServersHub.ServersHub.djdb.update_duration(vID, time.time() - self.counting_start_time)
         self.viewsList.playingUpdated()
+        
+    def suggestionUpdated(self):
+        self.viewsList.suggestionUpdated()
     
     # ----------------------------- REQUEST INFO ------------------------------ # 
     def getNowplaying(self):
@@ -114,6 +117,9 @@ class ServerControl():
     
     def getPlayingInfo(self):
         return self.vcControl.getPlayingInfo()
+    
+    def getSuggestions(self):
+        return self.vcControl.getSuggestions()
     
     def updatePlayingInfo(self):
         self.vcControl.updatePlayingInfo()
@@ -147,6 +153,12 @@ class ViewsList():
         print("PLAYING UPDATED")
         for v in self.views:
             v.playingUpdated()
+        pass
+    
+    def suggestionUpdated(self):
+        print("SUGGESTIONS UPDATED")
+        for v in self.views:
+            v.suggestionUpdated()
         pass
     
     def songInfoUpdated(self):

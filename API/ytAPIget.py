@@ -86,7 +86,7 @@ def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all
         return None
 
 
-def yt_search_suggestions(vID):
+def yt_search_suggestions(vID) -> list[SongInfo]:
     response = get_yt_suggestions(vID)
 
     songs = []

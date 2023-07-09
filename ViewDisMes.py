@@ -4,12 +4,14 @@ import ServersHub
 from typing import Optional
 
 class PlayBox(discord.ui.View):
-    def __init__(self, *, vID = None, timeout: Optional[float] = 180):
+    def __init__(self, *, vID = None, timeout: Optional[float] = 1800):
         super().__init__(timeout=timeout)
         self.Hub = ServersHub.ServersHub
         self.count = 0
         self.vID = vID
         
+    async def on_timeout(self):
+        super().on_timeout()
         
     def setVID(self, vID):
         if vID != self.vID:
@@ -33,16 +35,3 @@ class PlayBox(discord.ui.View):
         print("LEAVE CLICKED")
         self.Hub.getControl(interaction.guild_id).leave()
         
-        
-    # def patch_note_box(gif):
-    #     # execute git log and store it in log
-    #     os.system(f'git log -10 --pretty=format:"%ad%x09%s" --date=short > {patch_note_log}')
-    #     # extract log 
-    #     notes = parse_patch_note_log()
-    #     color = rand_color()
-    #     embed = discord.Embed(title = "Patch Note", color=color)
-    #     for date, commit in notes.items():
-    #         embed.add_field(name = date, value = commit, inline=False)
-    #     embed.set_image(url = gif)
-    #     embed.set_footer(text = "............................................................................................................................................................................................................................................................................................................................................")
-    #     return embed

@@ -27,6 +27,7 @@ class VcControl():
         self.dj = True
         self.started = False
         self.djReadied: tuple[str, dict, bool] = None # (yt_link, play_options, suggested)
+        self.displaySuggestions: list[SongInfo] = []
         
         self.djSuggestCount = 0
         self.djSuggestInterval = 4
@@ -52,6 +53,9 @@ class VcControl():
     
     def getNowplaying(self) -> (SongInfo):
         return self.playingSong
+    
+    def getSuggestions(self) -> list[SongInfo]:
+        return self.displaySuggestions
     
     def updatePlayingInfo(self):
         info = self.getNowplaying()
@@ -98,25 +102,16 @@ class VcControl():
 
     def exec(self):
         ''' Executed per second '''
-        ### REFACTOR LOGIC HANDLING SKIP/PLAYING/END
-        # # check if vc is still playing (song ended)
-        # prev_is_playing = self.is_playing
-        # self.is_playing = self.vc.is_playing()
-        # if prev_is_playing and not self.is_playing:
-        #     # trigger song ended on server control
-        #     if self.playingSong is not None: self.getServerControl().songEnded()
-            
-        #     self.playingSong = None
-        #     self.playingInfo = None
-
-        self.just_skipped = self.skip_author
-        self.skip_author = None
-        # check if vc is still playing or skipped (song ended) 
-        if not self.vc.is_playing() or self.just_skipped is not None:
+        just_skipped = self.skip_author is not None
+        
+        ##### check if vc is still playing or skipped (song ended) 
+        ##### NOTIFY SERVER SONG ENDED, CAN ALSO LEAVE IF NO ONE IN THE CHANNEL
+        if not self.vc.is_playing() or just_skipped:
             
             # trigger song ended on server control
-            if self.playingSong is not None: self.getServerControl().songEnded(self.playingSong.get(SongAttr.vID), skipped=self.just_skipped is not None)
+            if self.playingSong is not None: self.getServerControl().songEnded(self.playingSong.get(SongAttr.vID), skipped=just_skipped)
             
+            # Reset playing song internally to indicate song ended
             self.playingSong = None
             self.playingInfo = None
             
@@ -126,8 +121,8 @@ class VcControl():
                 self.getServerControl().leave()
                 return
             
+        ##### NOTHING IS PLAYING, AND SOMETHING IS IN QUEUE, then play queued song
         if self.playingSong is None and len(self.songManager.getPlaylist()) > 0:
-            # nothing playing && song exist in playlist 
             
             # Get next queued song and PLAY
             source, songInfo, player = self.songManager.next()
@@ -136,29 +131,37 @@ class VcControl():
             self.playingInfo = (songInfo, player)
             self.vc.play(source)
             
+            # RESET DJ SUGGESTION
+            self.djReadied = None
+            # RESET SKIP AUTHOR
+            self.skip_author = None
+            
             # add play history
             vID = self.playingSong.get(SongAttr.vID)
             self.Hub.djdb.add_history(vID, self.guild_id, self.guild_name, str(player))
             # trigger song started on server control
             self.getServerControl().songStarted(vID)
+            
+        ##### CURRENTLY PLAYING, OR NOTHING PLAYING BUT NOTHING IN QUEUE
         else:
+            # PREPARE SOMETHING FOR THE NEXT SONG (RANDOM SONG)
+            if self.dj and self.djReadied == None and len(self.songManager.getPlaylist()) == 0:
+                self.djReadied = self.djExec()
+            
+            # DJ already prepared song, NOTHING CURRENTLY PLAYING, then queue DJ readied song
             # nothing playing && queue empty && dj enabled && dj readied song
             if (self.dj and self.djReadied != None and self.playingSong is None 
                 and len(self.songManager.getPlaylist()) == 0):
                 
-                # DOES NOT WORK NEED INVESTIGATE
                 (yt_link, options, suggested) = self.djReadied
                 # Do not play dj recommendation if just skipped
-                if not (suggested and self.just_skipped): 
+                if not (suggested and just_skipped): 
                     self.getServerControl().play(yt_link, **options)
                 self.djReadied = None
                 
             # currently playing
             # do idle task
             
-            # dj task
-            if len(self.songManager.getPlaylist()) == 0 and self.dj and self.djReadied == None: 
-                self.djReadied = self.djExec()
                 
                 
     # --------------------------------------------------------------------------- # 
@@ -196,7 +199,10 @@ class VcControl():
         vid = None
         suggestions_list = yt_search_suggestions(vidToSuggestFrom)
         if len(suggestions_list) > 0:
-            suitableVids = VcControl.filterSuitableSuggestion(suggestions_list)
+            suitableSongs = VcControl.filterSuitableSuggestion(suggestions_list)
+            self.displaySuggestions = suitableSongs.copy()
+            self.getServerControl().suggestionUpdated()
+            suitableVids = [getattr(s, SongAttr.vID) for s in suitableSongs]
             
             random.shuffle(suitableVids)
             
@@ -210,7 +216,7 @@ class VcControl():
                     return vid
         return None
         
-    def filterSuitableSuggestion(songs, max_mins = 10) -> str:
+    def filterSuitableSuggestion(songs, max_mins = 10) -> list[SongInfo]:
         '''
         Find the most suitable suggestion from list
         songs: list(SongInfo)   - list of suggested songs
@@ -236,7 +242,8 @@ class VcControl():
 
             # 3. the song should have similar title
             print("suitable song: " + str(song))
-            suitable.append(getattr(song, SongAttr.vID))
+            # suitable.append(getattr(song, SongAttr.vID))
+            suitable.append(song)
 
         return suitable
 

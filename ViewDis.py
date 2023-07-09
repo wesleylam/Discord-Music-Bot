@@ -30,7 +30,7 @@ class ViewDis(ViewBase):
             await self.playbox_message.delete()
             self.playbox_message = None
             return 
-    
+        
     # sender
     async def updatePlaybox(self):
         playingInfo: tuple[SongInfo.SongInfo, str] = \
@@ -57,13 +57,21 @@ class ViewDis(ViewBase):
         {author} playing: {title}\n[{readable_time(duration if duration is not None else 0)}]{url}
         """
         
-        if self.playbox_message is None:
-            self.playbox_view = ViewDisMes.PlayBox(vID = vID)
-            self.playbox_message = await self.message_channel.send(message, view=self.playbox_view)
-            return 
+        # RECREAET PLAYBOX
+        self.playbox_view = ViewDisMes.PlayBox(vID = vID)
         
-        await self.playbox_message.edit(content=message, view=self.playbox_view)
-        return 
+        suggestions: list[SongInfo.SongInfo] = self.Hub.getControl(self.guild_id).getSuggestions() 
+        for suggestion in suggestions:
+            label: str = getattr(suggestion, SongAttr.Title)
+            sugButton = SuggestionButton(self.Hub, self.guild_id, getattr(suggestion, SongAttr.vID), label=label[:80] if len(label) > 80 else label, )
+            print("ADDED BUTTON", suggestion.Title)
+            self.playbox_view.add_item(sugButton)
+        
+        ## SEND OR EDIT PLAYBOX
+        if self.playbox_message is None:
+            self.playbox_message = await self.message_channel.send(message, view=self.playbox_view)
+        else:
+            await self.playbox_message.edit(content=message, view=self.playbox_view)
     
     # receiver
     def controlUpdated(self):
@@ -73,6 +81,9 @@ class ViewDis(ViewBase):
         self.playing_updated = True
         
         asyncio.ensure_future(self.updatePlaybox(), loop=self.loop)
+        
+    def suggestionUpdated(self):
+        self.playingUpdated()
     
     def songInfoUpdated(self):
         self.song_info_updated = True
@@ -86,3 +97,17 @@ class ViewDis(ViewBase):
         
     def disconnected(self):
         asyncio.ensure_future(self.removePlaybox(), loop=self.loop)
+        
+        
+## CUSTOM BUTTON CLASS TO HANDLE SUGGESTION BUTTON CALLBACK
+class SuggestionButton(discord.ui.Button):
+    def __init__(self, Hub, guild_id, vid, label) -> None:
+        super().__init__(label=label)
+        self.Hub = Hub
+        self.guild_id = guild_id
+        self.vid = vid
+        
+    async def callback(self, interaction: discord.Interaction):
+        super().callback(interaction)
+        self.Hub.getControl(self.guild_id).play(helper.vid_to_url(self.vid), author=interaction.user)
+    

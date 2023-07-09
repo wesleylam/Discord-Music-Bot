@@ -8,6 +8,9 @@ class ViewBase():
     def playingUpdated():
         pass
     
+    def suggestionUpdated(self):
+        pass
+    
     def songInfoUpdated():
         pass
         
