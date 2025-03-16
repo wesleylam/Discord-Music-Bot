@@ -75,8 +75,9 @@ def yturl_to_vid(url):
     if "watch?" in url:
         GET_req = url.split("watch?")[-1].split("&")
         for r in GET_req:
-            if r[0] == 'v': vid = r[2:]
-            break
+            if r[0] == 'v': 
+                vid = r[2:]
+                break
         if not vid: raise Exception("No video ID in URL")
         return vid
     elif "youtu.be" in url:
@@ -181,7 +182,7 @@ def error_log(err_m):
 def error_log_e(e):
     '''Reproduce error and traceback (will not throw error)'''
     now = get_time()
-    print("Logging error: " + e)
+    print("Logging error: " + str(e))
     with open(default_error_log, "a") as f:
         m = f"{now}:"
         f.write(m)

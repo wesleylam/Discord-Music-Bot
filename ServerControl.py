@@ -79,8 +79,8 @@ class ServerControl():
         self.viewsList.queueUpdated()
         
         
-    def remove(self, song_info):
-        self.vcControl.remove(song_info, author=None)
+    def remove(self, song_info, author=None):
+        self.vcControl.remove(song_info, author=author)
         self.viewsList.queueUpdated()
         
     def clear(self):

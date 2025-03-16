@@ -20,7 +20,7 @@ class ViewDis(ViewBase):
         self.loop = loop
         
         self.guild_id = id
-        self.Hub = ServersHub.ServersHub
+        self.Hub: ServersHub.ServersHub = ServersHub.ServersHub
         self.playbox_removed: bool = False
         self.playbox_message: discord.Message = None
         self.playbox_view: discord.ui.View = None
@@ -97,6 +97,7 @@ class ViewDis(ViewBase):
         self.queue_updated = True
         
     def queueUpdated(self):
+        asyncio.ensure_future(self.Hub.DJ_BOT.queue(self.message_channel))
         self.queue_updated = True
         
     def disconnected(self):

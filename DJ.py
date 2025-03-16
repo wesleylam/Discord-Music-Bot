@@ -1,7 +1,7 @@
 import os
 import discord
 from discord.ext import commands
-import asyncio
+import discord.ext
 
 from Views import Views
 from API.tenorAPIget import get_tenor_gif
@@ -12,11 +12,9 @@ from const.config import *
 from const.options import *
 
 class DJCog(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, Hub):
         self.bot: commands.Bot = bot
-        self.Hub = ServersHub.ServersHub
-
-        ServersHub.ServersHub.DJ_BOT = self
+        self.Hub: ServersHub.ServersHub = Hub
 
     # ---------------------------- MESSAGING --------------------------- # 
     async def notify(self, ctx, message, del_sec = 10):
@@ -198,7 +196,7 @@ class DJCog(commands.Cog):
     # ----------------------------- BASE PLAY COMMAND  ------------------------------ # 
     # COMMAND: play
     @commands.command(aliases=['p'])
-    async def play(self, ctx, *kwords, **config):
+    async def play(self, ctx: commands.context, *kwords, **config):
         if ctx.guild.id not in self.Hub.getAllControls():
             await self.join(ctx)
         self.Hub.getControl(ctx.guild.id).play(*kwords, author=ctx.author, **config)
@@ -214,7 +212,13 @@ class DJCog(commands.Cog):
     @commands.command(aliases=['playlist'])
     async def queue(self, ctx):
         '''List current playlist queue'''
-        await self.notify(ctx, f"Current queue: {self.Hub.getControl(ctx.guild.id).getQueue()}")
+        queue =  self.Hub.getControl(ctx.guild.id).getQueue()
+        displayStr = "(No queued item)"
+        if len(queue) != 0:
+            displayStr = ", ".join(
+                [songInfo.Title for source, songInfo, player in queue]
+            )
+        await self.notify(ctx, f"Current queue: {displayStr}")
 
     # COMMAND: skip
     @commands.command()
@@ -350,15 +354,15 @@ async def startDJ():
     bot = commands.Bot(command_prefix="=", case_insensitive=True, 
                         description='DJ', intents=intents)
     
+    import ServersHub
     try: 
-        await bot.add_cog(DJCog(bot))
+        DJbot = DJCog(bot, ServersHub.ServersHub)
+        await bot.add_cog(DJbot)
+        ServersHub.ServersHub.DJ_BOT = DJbot
         await bot.start(TOKEN) 
     except Exception:
         await bot.close()
-    
-    
-    
-    
+
 if __name__ == "__main__":
     startDJ()
 

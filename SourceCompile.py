@@ -4,6 +4,7 @@ from API.ytAPIget import yt_search_single
 from const.YTDLSource import YTDLSource, StaticSource
 from youtube_dl.utils import DownloadError
 from const.DBFields import SongAttr
+from const.options import ytdl_format_options
 import discord
 import yt_dlp
 
@@ -112,8 +113,7 @@ def scp_compile(vid, vol, loud = False, stream = True, baseboost = False):
     try:
         # search yt url
         # data = await self.bot.loop.run_in_executor(None, lambda: ServersHub.ServersHub.ytdl.extract_info(url, download=not stream))
-        ydl_opts = {}
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ytdl_format_options) as ydl:
             data = ydl.extract_info(url, download=not stream)
             if 'entries' in data:
                 # take first item from a playlist
