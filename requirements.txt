@@ -1,5 +1,8 @@
-requests==2.28.2
-discord==1.7.3
-discord_components==2.1.1
-mysql_connector_repackaged==0.3.1
-yt-dlp==2024.5.27
+requests
+discord
+discord_components
+mysql_connector_repackaged
+yt-dlp
+boto3
+waitress
+PyNaCl

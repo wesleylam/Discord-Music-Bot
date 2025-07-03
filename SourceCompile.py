@@ -2,7 +2,7 @@ from const.helper import *
 import ServersHub
 from API.ytAPIget import yt_search_single
 from const.YTDLSource import YTDLSource, StaticSource
-from youtube_dl.utils import DownloadError
+from yt_dlp.utils import DownloadError
 from const.DBFields import SongAttr
 from const.options import ytdl_format_options
 import discord
@@ -126,7 +126,11 @@ def scp_compile(vid, vol, loud = False, stream = True, baseboost = False):
                 elif 'url' in data:
                     filename = data['url']
                 else:
+                    import json
                     print("ERROR: NO URL OR REQUESTED FORMAT")
+                    f = open("/home/wesley/dev/Discord-Music-Bot/logs/ydl_extract_info.json")
+                    json.dump(data, f)
+                    f.close()
             else: 
                 filename = ydl.prepare_filename(data)
             ## TODO: USE Extracted info for entry data (eg: duration, title, channel)

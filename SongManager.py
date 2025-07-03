@@ -4,7 +4,7 @@ from const.DBFields import SongAttr
 
 class SongManager():
     def __init__(self) -> None:
-        self.playlist = [] # list of (source, songinfo, player)
+        self.playlist: tuple[object, SongInfo, str] = [] # list of (source, songinfo, player)
         self.dj: bool = False
 
     def add(self, source, songInfo, player, insert = False):
