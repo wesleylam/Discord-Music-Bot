@@ -10,6 +10,7 @@ import ServersHub
 from const.helper import *
 from const.config import *
 from const.options import *
+from Chatbot import Chatbot
 
 class DJCog(commands.Cog):
     def __init__(self, bot, Hub):
@@ -116,6 +117,13 @@ class DJCog(commands.Cog):
             ctx.voice_client.disconnect()
         else: 
             self.Hub.getControl(guild_id).disconnect()
+
+    # -------------------- Generic AI Chat --------------------
+    @commands.command(aliases=['ai'])
+    async def chat(self, ctx, *kwords):
+        '''chat bot'''
+        res = Chatbot.chat(" ".join(kwords))
+        await self.notify(ctx, res, del_sec=None)
             
     # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
@@ -342,6 +350,7 @@ class DJCog(commands.Cog):
 async def startDJ():
     # set ffmpeg error log file
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
+    # -http_persistent 0
 
     # for voice client to work: you need opus and ffmpeg
     # NOT needed for windows environment (neither ubuntu?)
@@ -356,6 +365,7 @@ async def startDJ():
     
     import ServersHub
     try: 
+        Chatbot.init()
         DJbot = DJCog(bot, ServersHub.ServersHub)
         await bot.add_cog(DJbot)
         ServersHub.ServersHub.DJ_BOT = DJbot

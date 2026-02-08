@@ -167,7 +167,14 @@ def song_is_live(title):
     if ("(live)" in title) or ("live!" in title) or ("live" in tokens) or ("concert" in tokens):
         return True 
     return False
+# ----------------------------------------- LOGGING -------------------------------------------- # 
 
+def chat_log(message):
+    '''Log chat bot messages'''
+    now = get_time()
+    with open(chatbot_log, "a", encoding="utf-8") as f:
+        m = f"{now}: {message}\n"
+        f.write(m)
 
 # ----------------------------------------- ERROR LOGGING -------------------------------------------- # 
 

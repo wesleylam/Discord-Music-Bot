@@ -137,7 +137,7 @@ def scp_compile(vid, vol, loud = False, stream = True, baseboost = False):
             
     except DownloadError as e: # youtube dl download error
         ServersHub.ServersHub.djdb.remove_song(vid)
-        raise YTDLException(f"Unable to download {url}, removed ({str(e)})")
+        raise YTDLException(f"Unable to download {url}, removed ({str(e)})\nFormat options:{ytdl_format_options}")
 
     # options for baseboosted or normal
     if baseboost or need_baseboost(data.get('title')):

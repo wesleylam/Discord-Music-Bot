@@ -7,6 +7,8 @@ import ServersHub
 from const.helper import *
 import discord
 from const import helper
+from Chatbot import Chatbot
+import time
 
 class ViewDis(ViewBase):
     def __init__(self, id, message_channel, loop) -> None:
@@ -18,6 +20,7 @@ class ViewDis(ViewBase):
         
         self.message_channel = message_channel
         self.loop = loop
+        self.lock = None
         
         self.guild_id = id
         self.Hub: ServersHub.ServersHub = ServersHub.ServersHub
@@ -33,11 +36,20 @@ class ViewDis(ViewBase):
         
     # sender
     async def updatePlaybox(self):
+        # release if too long (10s)
+        if self.lock != None and (time.time() - self.lock) > 10:
+            self.lock = None
+        
+        if self.lock != None:
+            return # skip if locked (another processing)
+        
+        self.lock = time.time()
         playingInfo: tuple[SongInfo.SongInfo, str] = \
             self.Hub.getControl(self.guild_id).getPlayingInfo()    
         
         if playingInfo is None:
             print("NOTHING IS PLAYING, delete playbox")
+            self.lock = None
             return await self.removePlaybox()
         
         # print("playingInfo", playingInfo)
@@ -53,9 +65,7 @@ class ViewDis(ViewBase):
         self.playbox_view.setVID(vID)
         
         ## Create message / edit message
-        message = f"""
-        {author} playing: {title}\n[{readable_time(duration if duration is not None else 0)}]{url}
-        """
+        message = f"{author} playing: {title}\n[{readable_time(duration if duration is not None else 0)}]{url}"
         
         # RECREAET PLAYBOX
         self.playbox_view = ViewDisMes.PlayBox(vID = vID)
@@ -67,11 +77,13 @@ class ViewDis(ViewBase):
             print("ADDED BUTTON", suggestion.Title)
             self.playbox_view.add_item(sugButton)
         
-        ## SEND OR EDIT PLAYBOX
-        if self.playbox_message is None:
-            self.playbox_message = await self.message_channel.send(message, view=self.playbox_view)
-        else:
-            await self.playbox_message.edit(content=message, view=self.playbox_view)
+        # ALWAYS SEND NEW
+        if (self.playbox_message is not None):
+            await self.playbox_message.delete()
+        chatMes = Chatbot.djUpdate(f"{author} played {title}")
+        self.playbox_message = await self.message_channel.send(f"{chatMes}\n{message}", view=self.playbox_view)
+        # Release lock
+        self.lock = None
     
     # receiver
     def controlUpdated(self):
@@ -82,8 +94,9 @@ class ViewDis(ViewBase):
         asyncio.ensure_future(self.updatePlaybox(), loop=self.loop)
         
     def checkDisplay(self):
-        if self.playbox_message == None:
+        if self.lock == False and self.playbox_message == None:
             print("ViewDis: No playbox found, forcing update")
+            self.removePlaybox()
             self.playingUpdated()
         
     def suggestionUpdated(self):

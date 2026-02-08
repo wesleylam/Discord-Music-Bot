@@ -14,6 +14,7 @@ Built using Python 3.7.7 with AWS DynamoDB
 - flask
 - flask[async] (only needed if using async function in flask)
 - waitress (for flask deployment server)
+- ollama (require LLM model)
 
 ## Packages install
 - discord (async-timeout, chardet, typing-extensions, multidict, attrs, idna, yarl, aiohttp, discord.py, discord)
@@ -24,6 +25,7 @@ Built using Python 3.7.7 with AWS DynamoDB
 - pytz
 - requests (charset-normalizer, urllib3, certifi, requests)
 - boto3 (jmespath, botocore, s3transfer, boto3)
+- ollama
 
 ## Configurations
 - Configure AWS connection `aws configure`
@@ -39,3 +41,6 @@ Built using Python 3.7.7 with AWS DynamoDB
  
 ## MANUALLY FIXED ISSUE
 https://github.com/ytdl-org/youtube-dl/commit/2dd6c6edd8e0fc5e45865b8e6d865e35147de772
+
+continuous error: "discord.errors.ConnectionClosed: Shard ID None WebSocket closed with 4006"
+- https://github.com/Rapptz/discord.py/pull/10210/files
