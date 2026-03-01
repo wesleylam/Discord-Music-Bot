@@ -8,6 +8,7 @@
       </div>
       <ul class="nav navbar-nav">
         <li class="active"><a href="#">Home</a></li>
+        <li><a href="{{ url_for('chat') }}">Chat</a></li>
         {%for guild in activeGuilds %}
           <li><a href="{{ url_for('server', guildId = guild.id) }}">{{ guild.name }}</a></li>
         {%endfor%}

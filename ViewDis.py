@@ -34,6 +34,22 @@ class ViewDis(ViewBase):
             self.playbox_message = None
             return 
         
+    async def waitAndSendRes(self, timeoutLimit = 20): 
+        start = time.time()
+        time.sleep(1)
+        
+        while Chatbot.lastReply == "" and (time.time() - start < timeoutLimit):
+            time.sleep(1)
+        
+        if (Chatbot.lastReply == ""):
+            message = "DJ is speechless"
+        else:
+            message = "DJ: " + Chatbot.lastReply
+            
+        m = await self.message_channel.send(message)
+        if m != None:
+            await m.delete(delay=60)
+        
     # sender
     async def updatePlaybox(self):
         # release if too long (10s)
@@ -79,9 +95,17 @@ class ViewDis(ViewBase):
         
         # ALWAYS SEND NEW
         if (self.playbox_message is not None):
-            await self.playbox_message.delete()
-        chatMes = Chatbot.djUpdate(f"{author} played {title}")
-        self.playbox_message = await self.message_channel.send(f"{chatMes}\n{message}", view=self.playbox_view)
+            try:
+                await self.playbox_message.delete()
+            except e:
+                error_log_e(e)
+                
+        # ASYNC CHATBOT
+        Chatbot.djUpdate(f"{author} played {title}")
+        asyncio.create_task(self.waitAndSendRes())
+
+        ## Send view box
+        self.playbox_message = await self.message_channel.send(f"{message}", view=self.playbox_view)
         # Release lock
         self.lock = None
     

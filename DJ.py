@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands
 import discord.ext
+import time
 
 from Views import Views
 from API.tenorAPIget import get_tenor_gif
@@ -24,7 +25,7 @@ class DJCog(commands.Cog):
         m = await ctx.send(message)
         
         # delete the message if needed
-        if del_sec: 
+        if m != None and del_sec:
             assert type(del_sec) == int
             await m.delete(delay = del_sec)
 
@@ -119,11 +120,32 @@ class DJCog(commands.Cog):
             self.Hub.getControl(guild_id).disconnect()
 
     # -------------------- Generic AI Chat --------------------
-    @commands.command(aliases=['ai'])
+    @commands.command(aliases=['ai', 'c'])
     async def chat(self, ctx, *kwords):
         '''chat bot'''
-        res = Chatbot.chat(" ".join(kwords))
-        await self.notify(ctx, res, del_sec=None)
+
+        Chatbot.chat(
+            " ".join(kwords),
+        )
+        
+        start = time.time()
+        time.sleep(1)
+        
+        while Chatbot.lastReply == "" and (time.time() - start < 60):
+            time.sleep(1)
+        
+        if (Chatbot.lastReply == ""):
+            message = "DJ is speechless"
+        else:
+            message = "DJ: " + Chatbot.lastReply
+            
+        m = await self.notify(ctx, message, None)
+
+    @commands.command()
+    async def reset(self, ctx, *kwords):
+        '''chat bot context reset'''
+        res = Chatbot.reset()
+        await self.notify(ctx, "Wiping my memory :(")
             
     # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
@@ -370,8 +392,9 @@ async def startDJ():
         await bot.add_cog(DJbot)
         ServersHub.ServersHub.DJ_BOT = DJbot
         await bot.start(TOKEN) 
-    except Exception:
+    except Exception as e:
         await bot.close()
+        raise e
 
 if __name__ == "__main__":
     startDJ()

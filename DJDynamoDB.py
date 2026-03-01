@@ -338,6 +338,8 @@ class DJDB():
 
         if dj is not None:
             scan_params["FilterExpression"] = Attr(SongAttr.DJable).eq(dj)
+        if top is not None:
+            scan_params["Limit"] = top
         
         # get all attr if not specified
         if needed_attr is not None and len(needed_attr) > 0:

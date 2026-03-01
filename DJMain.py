@@ -4,6 +4,7 @@ import DJ
 import webServer 
 import ServersHub
 import DJDynamoDB
+import Chatbot
 
 async def main():
     print("Starting gather")
@@ -11,8 +12,9 @@ async def main():
     ServersHub.ServersHub.djdb.connect()
     ServersHub.ServersHub.loop = asyncio.get_event_loop()
     await asyncio.gather(
+        DJ.startDJ(),
         asyncio.to_thread(webServer.runServer),
-        DJ.startDJ()
+        asyncio.to_thread(Chatbot.Chatbot.parserLoop),
     )
 
 

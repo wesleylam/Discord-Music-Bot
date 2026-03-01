@@ -3,6 +3,7 @@ from flask_bootstrap import Bootstrap
 from ServersHub import ServersHub
 from const.DBFields import SongAttr
 import random
+import time
 from const.helper import vid_to_url, vid_to_thumbnail, vid_to_embed_url, dict_compare
 import asyncio
 from waitress import serve
@@ -132,6 +133,18 @@ def djAction(guildId):
     
     return jsonify(data)
 
+@app.post('/chat')
+def chatPost():
+    if request.form.get("user_query") != "":
+        attempt = 0
+        Chatbot.chat(request.form.get("user_query"))
+        while Chatbot.lastReply == "" and attempt <= 100:
+            time.sleep(1)
+            attempt += 1
+            
+        return render_template('chat.html', 
+                               response=res if attempt < 100 else "Err: Timed out")
+    return render_template('chat.html', response="No input")
 
 
 #################################### GET ############################################
@@ -147,10 +160,14 @@ def song(vID):
     options = build_table_options(info, headers = None)
     return render_template('index.html', table_title = getattr(item, SongAttr.Title), **options)
 
+@app.route('/chat')
+def chat():
+    return render_template('chat.html')
+    
 @app.route('/')
 def index():
     # songs will be returned as list of dictionary
-    songs = ServersHub.djdb.list_all_songs(top = None, needed_attr = None, return_song_type = None)
+    songs = ServersHub.djdb.list_all_songs(top = 50, needed_attr = None, return_song_type = None)
     for i in range(len(songs)):
         # songs[i]["Details"] = f'<a href="/song/{songs[i][SongAttr.vID]}"><button>DETAIL</button></a>'
         songs[i]["Details"] = render_template('abutton.html', url = f"/song/{songs[i][SongAttr.vID]}", text = "DETAIL")
@@ -161,8 +178,6 @@ def index():
     return render_template('index.html', 
                            activeGuilds = activeGuilds,
                            table_title = "All songs", **options)
-
-
 
 def build_table_options(info, headers = None):
     options = {}
@@ -182,7 +197,7 @@ def build_table_options(info, headers = None):
         tr = []
         if type(info[0]) == dict:
             for k in headers:
-                v = row[k]
+                v = row[k] if k in row else ''
                 tr.append(v)
         if type(info[0]) == list:
             for v in row:
