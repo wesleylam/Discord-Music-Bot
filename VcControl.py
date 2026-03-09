@@ -30,6 +30,8 @@ class VcControl():
         self.started = False
         self.djReadied: tuple[str, dict, bool] = None # (yt_link, play_options, suggested)
         self.displaySuggestions: list[SongInfo] = []
+        self.cached_suggestions: list[SongInfo] = []
+        self.cached_vID = None
         
         self.djSuggestCount = 0
         self.djSuggestInterval = 4
@@ -104,7 +106,7 @@ class VcControl():
                 break
                 
             try:
-                self.exec()
+                await self.exec()
                 await asyncio.sleep(1)
             except Exception as e:
                 self.getServerControl().clear()
@@ -114,7 +116,7 @@ class VcControl():
         print("Exec Loop ended", self.vc)        
         self.started = False
 
-    def exec(self):
+    async def exec(self):
         ''' Executed per second '''
         just_skipped = self.skip_author is not None
         
@@ -165,7 +167,7 @@ class VcControl():
             
             # PREPARE SOMETHING FOR THE NEXT SONG (RANDOM SONG)
             if self.dj and self.djReadied == None and len(self.songManager.getPlaylist()) == 0:
-                self.djReadied = self.djExec()
+                self.djReadied = await self.djExec()
             
             # DJ already prepared song, NOTHING CURRENTLY PLAYING, then queue DJ readied song
             # nothing playing && queue empty && dj enabled && dj readied song
@@ -192,18 +194,28 @@ class VcControl():
     def getDJNext(self):
         return self.djReadied
     
-    def djExec(self):
-        playingVid = getattr(self.playingSong, SongAttr.vID) if self.playingSong else None
+    def get_suggestions_from_api(self, songInfo: SongInfo) -> list[SongInfo]:
+        if songInfo is None: return []
+        vID = getattr(songInfo, SongAttr.vID)
+        
+        if self.cached_vID == vID and self.cached_suggestions:
+            return self.cached_suggestions
+            
+        self.cached_suggestions = yt_search_suggestions(songInfo)
+        self.cached_vID = vID
+        return self.cached_suggestions
+
+    async def djExec(self):
         vid = None
         suggested = False
         while vid == None:
             self.djSuggestCount += 1
-            if self.djSuggestCount >= self.djSuggestInterval and playingVid:
-                vid = self.getDJSongFromSuggestions(playingVid)
+            if self.djSuggestCount >= self.djSuggestInterval and self.playingSong:
+                vid = await self.getDJSongFromSuggestions(self.playingSong)
                 print("DJ SUGGESTING yt suggestions:", vid)
                 self.djSuggestCount = 0
                 suggested = True
-            else:            
+            else:
                 vid = self.Hub.djdb.find_rand_song()
                 print("DJ SUGGESTING rand db song:", vid)
     
@@ -216,10 +228,10 @@ class VcControl():
             suggested
         )
     
-    def getDJSongFromSuggestions(self, vidToSuggestFrom):
+    async def getDJSongFromSuggestions(self, songToSuggestFrom: SongInfo):
         '''Find dj source from youtube suggestions'''
         vid = None
-        suggestions_list = yt_search_suggestions(vidToSuggestFrom)
+        suggestions_list = await self.getServerControl().fetchSuggestions(songToSuggestFrom)
         if len(suggestions_list) > 0:
             suitableSongs = VcControl.filterSuitableSuggestion(suggestions_list)
             self.displaySuggestions = suitableSongs.copy()
@@ -299,6 +311,9 @@ class VcControl():
     def remove(self, title_substr, author):
         '''remove_track'''
         self.songManager.remove(title_substr)
+
+    def remove_at(self, index, author):
+        self.songManager.remove_at(index)
 
     def clear(self):
         self.songManager.clear()

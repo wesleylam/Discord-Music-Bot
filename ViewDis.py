@@ -77,21 +77,14 @@ class ViewDis(ViewBase):
 
         # create playbox buttons view
         if self.playbox_view is None:
-            self.playbox_view = ViewDisMes.PlayBox(vID = vID)
+            self.playbox_view = ViewDisMes.PlayBox(songInfo = songInfo)
         self.playbox_view.setVID(vID)
         
         ## Create message / edit message
         message = f"{author} playing: {title}\n[{readable_time(duration if duration is not None else 0)}]{url}"
         
         # RECREAET PLAYBOX
-        self.playbox_view = ViewDisMes.PlayBox(vID = vID)
-        
-        suggestions: list[SongInfo.SongInfo] = self.Hub.getControl(self.guild_id).getSuggestions() 
-        for suggestion in suggestions:
-            label: str = getattr(suggestion, SongAttr.Title)
-            sugButton = SuggestionButton(self.Hub, self.guild_id, getattr(suggestion, SongAttr.vID), label=label[:80] if len(label) > 80 else label, )
-            print("ADDED BUTTON", suggestion.Title)
-            self.playbox_view.add_item(sugButton)
+        self.playbox_view = ViewDisMes.PlayBox(songInfo = songInfo)
         
         # ALWAYS SEND NEW
         if (self.playbox_message is not None):
@@ -115,7 +108,8 @@ class ViewDis(ViewBase):
     
     def playingUpdated(self):
         self.playing_updated = True
-        asyncio.ensure_future(self.updatePlaybox(), loop=self.loop)
+        # Use run_coroutine_threadsafe as this can be called from another thread (e.g. web server)
+        asyncio.run_coroutine_threadsafe(self.updatePlaybox(), self.loop)
         
     def checkDisplay(self):
         if self.lock == False and self.playbox_message == None:
@@ -130,15 +124,16 @@ class ViewDis(ViewBase):
         self.song_info_updated = True
         
     def songAdded(self, songInfo: SongInfo):
-        asyncio.ensure_future(self.Hub.DJ_BOT.notify(self.message_channel, f'Queued song: {helper.vid_to_url(songInfo.get(SongAttr.vID))}'), loop=self.loop)
+        coro = self.Hub.DJ_BOT.notify(self.message_channel, f'Queued song: {helper.vid_to_url(songInfo.get(SongAttr.vID))}')
+        asyncio.run_coroutine_threadsafe(coro, self.loop)
         self.queue_updated = True
         
     def queueUpdated(self):
-        asyncio.ensure_future(self.Hub.DJ_BOT.queue(self.message_channel))
+        asyncio.run_coroutine_threadsafe(self.Hub.DJ_BOT.queue(self.message_channel), self.loop)
         self.queue_updated = True
         
     def disconnected(self):
-        asyncio.ensure_future(self.removePlaybox(), loop=self.loop)
+        asyncio.run_coroutine_threadsafe(self.removePlaybox(), self.loop)
         
         
 ## CUSTOM BUTTON CLASS TO HANDLE SUGGESTION BUTTON CALLBACK

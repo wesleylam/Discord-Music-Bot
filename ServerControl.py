@@ -83,6 +83,10 @@ class ServerControl():
         self.vcControl.remove(song_info, author=author)
         self.viewsList.queueUpdated()
         
+    def remove_at(self, index, author=None):
+        self.vcControl.remove_at(index, author=author)
+        self.viewsList.queueUpdated()
+
     def clear(self):
         self.vcControl.clear()
         self.viewsList.queueUpdated()
@@ -130,6 +134,12 @@ class ServerControl():
     def getSuggestions(self):
         return self.vcControl.getSuggestions()
     
+    async def fetchSuggestions(self, songInfo: SongInfo):
+        return await ServersHub.ServersHub.loop.run_in_executor(None, self.vcControl.get_suggestions_from_api, songInfo)
+
+    async def fetchRandomSongs(self, n=10):
+        return await ServersHub.ServersHub.loop.run_in_executor(None, ServersHub.ServersHub.djdb.find_rand_songs, n)
+
     def updatePlayingInfo(self):
         self.vcControl.updatePlayingInfo()
     

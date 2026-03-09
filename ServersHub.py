@@ -5,7 +5,7 @@ from const.options import ytdl_format_options
 # static class for global
 class ServersHub():
     djdb: DJDB = None
-    serverControls = {} # guild.id: vcControl object
+    serverControls: dict[str, ServerControl.ServerControl]= {} # guild.id: vcControl object
     DJ_BOT = None
     
     # asyncio loop: for async func

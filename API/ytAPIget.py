@@ -1,6 +1,7 @@
 from const.SongInfo import SongInfo
 import requests
 import json
+import yt_dlp
 from const.config import yt_API_key
 from const.DBFields import SongAttr
 from const.helper import *
@@ -88,33 +89,62 @@ def yt_search(q, use_vID = False, force_music = True, find_all = False, find_all
         return None
 
 
-def yt_search_suggestions(vID) -> list[SongInfo]:
-    response = get_yt_suggestions(vID)
+def yt_search_suggestions(songInfo: SongInfo) -> list[SongInfo]:
+    # --- New Method: Use yt-dlp to find YouTube's "Mix" playlist ---
+    vID = getattr(songInfo, SongAttr.vID)
+    # Construct a URL that forces YouTube to generate a "Mix" playlist (Radio).
+    url = f"https://www.youtube.com/watch?v={vID}&list=RD{vID}"
+    ydl_opts = {
+        'extract_flat': 'in_playlist', # Fast, gets playlist entries without processing them
+        'quiet': True,
+        'noplaylist': False, # We explicitly want the playlist, so ensure this is not True.
+    }
 
-    songs = []
-    if response is None or 'items' not in response:
-        print(f"items not in yt suggest res: {response}")
-        return []
+    try:
+        print(f"Attempting to extract suggestions using yt-dlp for video {vID} with URL: {url}")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            data = ydl.extract_info(url, download=False)
+            print(f"yt-dlp extracted data for {vID}: {data.get('title', 'No title')} with {len(data.get('entries', []))} entries")
+
+        if 'entries' in data and data['entries']:
+            suggestions = []
+            # The first entry is the song itself. We take the next 10.
+            for entry in data['entries'][1:11]: 
+                if entry and entry.get('id') and entry.get('title'):
+                    song = SongInfo(
+                        entry.get('id'),
+                        entry.get('title'),
+                        entry.get('channel_id'),
+                        entry.get('thumbnail'),
+                    )
+                    if entry.get('duration'):
+                        song.duration = int(entry.get('duration'))
+                    suggestions.append(song)
+            
+            if suggestions:
+                print(f"Found {len(suggestions)} suggestions from yt-dlp mix for {vID}")
+                return suggestions
+    except Exception as e:
+        print(f"yt-dlp suggestion extraction failed for {vID}: {e}")
+        # Fallback to the old method if yt-dlp fails
         
-    items = response['items']
-    for i in range(len(items)):
-        item = items[i]
-        kind = item['id']['kind'].split('#')[1]
-        videoID = item['id'][kind + 'Id']
-        # if snippet does not exist, probably means the video is no longer available
-        if kind == "video" and "snippet" in item.keys():
-            # only add to list if not banned
-            title = item['snippet']['title']
-            s = SongInfo(
-                videoID, 
-                title, 
-                item['snippet']['channelId'],
-                item['snippet']['thumbnails']['default']['url']
-            )
-            print(s)
-            songs.append(s)
-    
-    return songs
+    # --- Fallback to existing method if yt-dlp doesn't yield a mix ---
+    print(f"yt-dlp did not find a mix, falling back to API search for {vID}")
+    if songInfo:
+        # Improve the fallback search query to get more variety
+        query = f"{songInfo.Title} radio"
+        results = yt_search_all(query, n=10, force_music=True)
+        if results:
+            # Filter out the original song and any potential duplicates
+            seen_vids = {songInfo.vID}
+            unique_results = []
+            for s in results:
+                if s.vID not in seen_vids:
+                    unique_results.append(s)
+                    seen_vids.add(s.vID)
+            return unique_results
+            
+    return []
 
 
     # 'https://youtube.googleapis.com/youtube/v3/playlistItems?playlistId='

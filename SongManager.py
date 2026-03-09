@@ -27,6 +27,12 @@ class SongManager():
                 return song
         return None
 
+    def remove_at(self, index) -> SongInfo:
+        if 0 <= index < len(self.playlist):
+            item = self.playlist.pop(index)
+            return item[1]
+        return None
+
     def getPlaylist(self):
         return self.playlist
 

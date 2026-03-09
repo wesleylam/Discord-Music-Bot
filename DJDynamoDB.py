@@ -287,6 +287,31 @@ class DJDB():
         chosen = random.choice(items)
         return chosen[SongAttr.vID]
 
+    def find_rand_songs(self, n=10, dj = True):
+        projection_expression = f"{SongAttr.vID}, {SongAttr.Title}, {SongAttr.ChannelID}, #dur, {SongAttr.SongVol}"
+        expression_attribute_names = {'#dur': SongAttr.Duration}
+
+        scan_kwargs = {
+            'ProjectionExpression': projection_expression,
+            'ExpressionAttributeNames': expression_attribute_names
+        }
+
+        if dj:
+            scan_kwargs['FilterExpression'] = Attr(SongAttr.DJable).eq(True)
+
+        response = self.table.scan(**scan_kwargs)
+        items = response['Items'] # items: list of dict
+        
+        if len(items) == 0:
+            return []
+            
+        chosen_items = random.sample(items, min(len(items), n))
+
+        songs = []
+        for item in chosen_items:
+            songs.append(DJDB.dbItemToSongInfo(item))
+        return songs
+
 
     # query song
     def find_song_match(self, vID):

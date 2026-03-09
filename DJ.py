@@ -158,7 +158,8 @@ class DJCog(commands.Cog):
             guild_id = ctx.guild.id
 
         # set vccontrol and bot status
-        self.Hub.getControl(guild_id).dj( dj_type )
+        if self.Hub.getControl(guild_id) != None:
+            self.Hub.getControl(guild_id).dj( dj_type )
         await self.bot_status(dj = dj_type)
         
     # COMMAND: djoff
