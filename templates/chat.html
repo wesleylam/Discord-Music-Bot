@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block styles %}
+
+<head>
+  {{ super() }}
+  <style>
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      /* Makes it circular */
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      width: 100%;
+    }
+
+    .bot-res {
+      white-space: pre-wrap;
+      /* This treats \n exactly like a <br> tag */
+    }
+  </style>
+</head>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/index.css') }}">
+{% endblock %}
+
+
+{% block content %}
+{{ super() }}
+
+<body>
+  <div class="chat-container">
+    <h1></h1>
+    <img src="{{ url_for('static', filename='images/agase.png') }}" alt="AI Avatar" class="logo">
+    {% if response %}
+    <div class="response-area">
+      <strong>Bot:</strong>
+      <div class="bot-res">
+        {{ response }}
+      </div>
+    </div>
+    {% endif %}
+
+    <form method="POST">
+      <textarea name="user_query" rows="3" placeholder="Ask me anything..." required></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+</body>
+{% endblock %}

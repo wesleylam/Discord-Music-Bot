@@ -88,9 +88,9 @@ def djAction(guildId):
     song_choices = None
     for actionId in actionIds.split('__'):
         if actionId == 'join':
-            task: asyncio.Task = ServersHub.loop.create_task(ServersHub.DJ_BOT.dj(guildId))
-            # wait until done
-            while not task.done(): pass
+            # Thread-safe execution of async bot command from Flask thread
+            future = asyncio.run_coroutine_threadsafe(ServersHub.DJ_BOT.dj(guildId), ServersHub.loop)
+            future.result() # Wait for completion
             response.append("Joined")
             
         if actionId == 'skip':

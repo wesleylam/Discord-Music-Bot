@@ -1,4 +1,3 @@
-from concurrent.futures import ProcessPoolExecutor
 import asyncio
 import DJ
 import webServer 
@@ -10,15 +9,21 @@ async def main():
     print("Starting gather")
     ServersHub.ServersHub.djdb = DJDynamoDB.DJDB()
     ServersHub.ServersHub.djdb.connect()
-    ServersHub.ServersHub.loop = asyncio.get_event_loop()
-    await asyncio.gather(
-        DJ.startDJ(),
-        asyncio.to_thread(webServer.runServer),
-        asyncio.to_thread(Chatbot.Chatbot.parserLoop),
-    )
+    # Capture the running loop for thread-safe operations in other modules
+    ServersHub.ServersHub.loop = asyncio.get_running_loop()
+    
+    try:
+        await asyncio.gather(
+            DJ.startDJ(),
+            asyncio.to_thread(webServer.runServer),
+            asyncio.to_thread(Chatbot.Chatbot.parserLoop),
+        )
+    except asyncio.CancelledError:
+        print("System shutting down...")
 
 
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
