@@ -13,17 +13,20 @@ ytdl_format_options = {
     'source_address': '0.0.0.0', # bind to ipv4 since ipv6 addresses cause issues sometimes
     # add cookie file to access premium links
     # 'cookiefile': '', 
+    'cookies-from-browser': 'chrome'
 }
 ffmpeg_options = {
     "options": "-vn -report",
     # allow reconnect when streaming drops
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 }
-ffmpeg_error_log = "./ffreport.log"
+ffmpeg_error_log = "./logs/ffreport.log"
 
-default_error_log = "./error_log.log"
+default_error_log = "./logs/error_log.log"
 
-patch_note_log = "./patch_note.log"
+patch_note_log = "./logs/patch_note.log"
+
+chatbot_log = "./logs/chatbot.log"
 
 # volumes
 default_init_vol = 0.1

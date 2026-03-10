@@ -1,17 +1,12 @@
-import asyncio
 import ServerControl
 from DJDynamoDB import DJDB
-import youtube_dl
 from const.options import ytdl_format_options
 
 # static class for global
 class ServersHub():
     djdb: DJDB = None
-    serverControls = {} # guild.id: vcControl object
+    serverControls: dict[str, ServerControl.ServerControl]= {} # guild.id: vcControl object
     DJ_BOT = None
-    
-    # initialise ytdl from youtube_dl library
-    ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
     
     # asyncio loop: for async func
     loop = None

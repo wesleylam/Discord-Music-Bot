@@ -7,11 +7,20 @@ body {
 .flex{
     width: 100%;
     display: flex;
-    margin: 0%;
-    padding:0%
+    flex-wrap: wrap;
 }
+
+.flex > div{
+    padding-right: 1%;
+}
+
 #side_div{
-    margin-left: 5%;
+    flex-grow: 1;
+}
+#playing_div{
+    flex-grow: 1;
+    min-width: 40vw;
+    min-height: 28.2vw;
 }
 
 .btn#skip{
@@ -25,4 +34,7 @@ body {
 }
 .btn#notdjable__skip{
     background-color:indianred;
+}
+.btn#songInfo{
+    background-color:lightsteelblue;
 }

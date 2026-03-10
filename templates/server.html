@@ -15,6 +15,7 @@
       showingVid = vid
     });
   }
+  doFetchServer()
   setInterval(() => {
     // ---- Fetch server for update
     doFetchServer()
@@ -41,35 +42,44 @@
 <button class="btn" id="join" onclick="onClickAction(this.id)">START DJ</button>
 <h1 id="nowplaying_h1">Now Playing</h1>
 <div id="playbox">
+  <!-- TITLE H2 -->
   <h2 id="title_h2">{{ TITLE }}</h2>
+  <!-- INFO  -->
+  <div id="info_div">
+    <div id="info_table">
+      {{ INFO }}
+    </div>
+  </div>
   
-  <div class="container flex">
+  <div class="flex">
     <div id="playing_div">
-      <div>
-        <iframe id="vid_iframe" width="420" height="315" src="">
-        </iframe>
-      </div>
+      <iframe id="vid_iframe" width="100%" height="80%" src="">
+      </iframe>
       <div id="actions">
         <button class="btn" id="skip" onclick="onClickAction(this.id)">Skip</button>
         <button class="btn" id="djable" onclick="onClickAction(this.id)">DJable</button>
         <button class="btn" id="notdjable" onclick="onClickAction(this.id)">Not DJable</button>
         <button class="btn" id="notdjable__skip" onclick="onClickAction(this.id)">Not DJable Skip</button>
+        <a id="songInfo_a" href="http://weslam.ddns.net/"><button class="btn" id="songInfo">Song Info</button></a>
         <button class="btn" id="leave" onclick="onClickAction(this.id)">Leave</button>
       </div>
     </div>
   
     <!-- SIDE INFO DIV -->
     <div id="side_div">
-      <div id="info_div">
-        <h3 id="songInfo_h3">Song Info:</h3>
-        <div id="info_table">
-          {{ INFO }}
-        </div>
-      </div>
       <div id="queue_div">
         <h3>Queue:</h3>
         <div id="queue_list">{{ QUEUE }}</div>
       </div>
+    </div>
+
+    <!-- PLAY/SEARCH -->
+    <div class="flex">
+      <p>Search:</p>
+      <input id="search_input" type="text" placeholder="Link or search terms" class="search" onkeydown="inputSubmit(this)"/>
+      <button class="btn" id="search" onclick="onClickAction(this.id)">Queue</button>
+    </div>
+    <div id="search_result_div">
     </div>
   </div>
 </div>

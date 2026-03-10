@@ -1,7 +1,8 @@
 import os
 import discord
 from discord.ext import commands
-import asyncio
+import discord.ext
+import time
 
 from Views import Views
 from API.tenorAPIget import get_tenor_gif
@@ -10,13 +11,12 @@ import ServersHub
 from const.helper import *
 from const.config import *
 from const.options import *
+from Chatbot import Chatbot
 
-class DJ(commands.Cog):
-    def __init__(self, bot):
+class DJCog(commands.Cog):
+    def __init__(self, bot, Hub):
         self.bot: commands.Bot = bot
-        self.Hub = ServersHub.ServersHub
-
-        ServersHub.ServersHub.DJ_BOT = self
+        self.Hub: ServersHub.ServersHub = Hub
 
     # ---------------------------- MESSAGING --------------------------- # 
     async def notify(self, ctx, message, del_sec = 10):
@@ -25,7 +25,7 @@ class DJ(commands.Cog):
         m = await ctx.send(message)
         
         # delete the message if needed
-        if del_sec: 
+        if m != None and del_sec:
             assert type(del_sec) == int
             await m.delete(delay = del_sec)
 
@@ -44,15 +44,18 @@ class DJ(commands.Cog):
 # -------------------------------------------------------------------------------------------- # 
 # ------------------------------------- VOICE CONTROL ---------------------------------------- # 
     # -------------------------------------------------------------------------------------------- # 
-    @commands.command(aliases=['patch', 'note'])
-    async def patchnote(self, ctx):
+    def makePatchnoteEmbedded(self):
         '''Show the newest patch note'''
         # get gif
         q = random.choice(opening_gif_search_list)
         gif = get_tenor_gif(q)
         # make embed
-        embeded = Views.patch_note_box(gif)
-        await ctx.send( embed = embeded)
+        return Views.patch_note_box(gif)
+        
+    @commands.command(aliases=['patch', 'note'])
+    async def patchnote(self, ctx):
+        '''Show the newest patch note'''
+        await ctx.send( embed = self.makePatchnoteEmbedded())
 
     # -------------------- Join voice channel -------------------- #
     @commands.command()
@@ -89,8 +92,8 @@ class DJ(commands.Cog):
             await vc.connect()
             if not silence:
                 # show patch note
-                await self.patchnote(message_channel)
-                await self.notify(message_channel, f'DJ2.0 is here! http://weslam.ddns.net:42069', None)
+                await message_channel.send( embed = self.makePatchnoteEmbedded() )
+                await self.notify(message_channel, f'DJ2.0 is here! http://weslam.ddns.net:9000/server/{guild.id}', None)
                 
             # create new control instance, send current channel for further messaging
             self.Hub.add(
@@ -111,22 +114,52 @@ class DJ(commands.Cog):
             guild_id = ctx.guild.id
         if ctx.voice_client is None:
             raise Exception("I am not in any voice channel, use join command instead")
+        elif self.Hub.getControl(guild_id) == None:
+            ctx.voice_client.disconnect()
         else: 
             self.Hub.getControl(guild_id).disconnect()
+
+    # -------------------- Generic AI Chat --------------------
+    @commands.command(aliases=['ai', 'c'])
+    async def chat(self, ctx, *kwords):
+        '''chat bot'''
+
+        Chatbot.chat(
+            " ".join(kwords),
+        )
+        
+        start = time.time()
+        time.sleep(1)
+        
+        while Chatbot.lastReply == "" and (time.time() - start < 60):
+            time.sleep(1)
+        
+        if (Chatbot.lastReply == ""):
+            message = "DJ is speechless"
+        else:
+            message = "DJ: " + Chatbot.lastReply
+            
+        m = await self.notify(ctx, message, None)
+
+    @commands.command()
+    async def reset(self, ctx, *kwords):
+        '''chat bot context reset'''
+        res = Chatbot.reset()
+        await self.notify(ctx, "Wiping my memory :(")
             
     # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
     @commands.command()
     async def dj(self, ctx, dj_type = True):
         '''Turn on DJ'''
-        if dj_type:
-            if type(ctx) == str or ctx.voice_client is None: # if sent from discord (i.e. context given), check vc exist first 
-                guild_id = await self.join(ctx)
+        if type(ctx) == str or ctx.voice_client is None: # if sent from discord (i.e. context given), check vc exist first :
+            guild_id = await self.join(ctx)
         else:
             guild_id = ctx.guild.id
 
         # set vccontrol and bot status
-        self.Hub.getControl(guild_id).dj( dj_type )
+        if self.Hub.getControl(guild_id) != None:
+            self.Hub.getControl(guild_id).dj( dj_type )
         await self.bot_status(dj = dj_type)
         
     # COMMAND: djoff
@@ -194,7 +227,7 @@ class DJ(commands.Cog):
     # ----------------------------- BASE PLAY COMMAND  ------------------------------ # 
     # COMMAND: play
     @commands.command(aliases=['p'])
-    async def play(self, ctx, *kwords, **config):
+    async def play(self, ctx: commands.context, *kwords, **config):
         if ctx.guild.id not in self.Hub.getAllControls():
             await self.join(ctx)
         self.Hub.getControl(ctx.guild.id).play(*kwords, author=ctx.author, **config)
@@ -204,13 +237,19 @@ class DJ(commands.Cog):
     @commands.command(aliases = ['np', 'now'])
     async def nowplaying(self, ctx):
         '''Redisplay nowplaying board w/ controls'''
-        await self.Hub.getControl(ctx.guild.id).display_nowplaying()
+        self.Hub.getControl(ctx.guild.id).display_nowplaying()
 
     # COMMAND: queue
     @commands.command(aliases=['playlist'])
     async def queue(self, ctx):
         '''List current playlist queue'''
-        await self.Hub.getControl(ctx.guild.id).list(ctx)
+        queue =  self.Hub.getControl(ctx.guild.id).getQueue()
+        displayStr = "(No queued item)"
+        if len(queue) != 0:
+            displayStr = ", ".join(
+                [songInfo.Title for source, songInfo, player in queue]
+            )
+        await self.notify(ctx, f"Current queue: {displayStr}")
 
     # COMMAND: skip
     @commands.command()
@@ -334,6 +373,7 @@ class DJ(commands.Cog):
 async def startDJ():
     # set ffmpeg error log file
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
+    # -http_persistent 0
 
     # for voice client to work: you need opus and ffmpeg
     # NOT needed for windows environment (neither ubuntu?)
@@ -346,15 +386,17 @@ async def startDJ():
     bot = commands.Bot(command_prefix="=", case_insensitive=True, 
                         description='DJ', intents=intents)
     
+    import ServersHub
     try: 
-        await bot.add_cog(DJ(bot))
+        Chatbot.init()
+        DJbot = DJCog(bot, ServersHub.ServersHub)
+        await bot.add_cog(DJbot)
+        ServersHub.ServersHub.DJ_BOT = DJbot
         await bot.start(TOKEN) 
-    except Exception:
+    except Exception as e:
         await bot.close()
-    
-    
-    
-    
+        raise e
+
 if __name__ == "__main__":
     startDJ()
 

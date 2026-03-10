@@ -75,17 +75,18 @@ def yturl_to_vid(url):
     if "watch?" in url:
         GET_req = url.split("watch?")[-1].split("&")
         for r in GET_req:
-            if r[0] == 'v': vid = r[2:]
-            break
+            if r[0] == 'v': 
+                vid = r[2:]
+                break
         if not vid: raise Exception("No video ID in URL")
         return vid
     elif "youtu.be" in url:
-        vid = url.split("/")[-1]
+        vid = url.split("/")[-1].split("?")[0]
         return vid
     else: raise Exception("Not youtube link")
 
 def vid_to_url(vid):
-    return f"https://youtu.be/{vid}"
+    return f"https://www.youtube.com/watch?v={vid}"
 
 def vid_to_embed_url(vid):
     return f"https://www.youtube.com/embed/{vid}"
@@ -166,7 +167,14 @@ def song_is_live(title):
     if ("(live)" in title) or ("live!" in title) or ("live" in tokens) or ("concert" in tokens):
         return True 
     return False
+# ----------------------------------------- LOGGING -------------------------------------------- # 
 
+def chat_log(message):
+    '''Log chat bot messages'''
+    now = get_time()
+    with open(chatbot_log, "a", encoding="utf-8") as f:
+        m = f"{now}: {message}\n"
+        f.write(m)
 
 # ----------------------------------------- ERROR LOGGING -------------------------------------------- # 
 
@@ -181,12 +189,15 @@ def error_log(err_m):
 def error_log_e(e):
     '''Reproduce error and traceback (will not throw error)'''
     now = get_time()
+    print("Logging error: " + str(e))
     with open(default_error_log, "a") as f:
         m = f"{now}:"
         f.write(m)
         try:
             raise e
-        except:
+        except Exception as e:
+            print(f"Exception type: {type(e)} \n")
+            f.write(f"Exception type: {type(e)} \n")
             traceback.print_exc(file=f)
 
 

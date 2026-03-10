@@ -4,7 +4,7 @@ from const.DBFields import SongAttr
 
 class SongManager():
     def __init__(self) -> None:
-        self.playlist = [] # list of (source, songinfo, player)
+        self.playlist: tuple[object, SongInfo, str] = [] # list of (source, songinfo, player)
         self.dj: bool = False
 
     def add(self, source, songInfo, player, insert = False):
@@ -25,6 +25,12 @@ class SongManager():
             if title_substr in getattr(song, SongAttr.Title):
                 self.playlist.pop(i)
                 return song
+        return None
+
+    def remove_at(self, index) -> SongInfo:
+        if 0 <= index < len(self.playlist):
+            item = self.playlist.pop(index)
+            return item[1]
         return None
 
     def getPlaylist(self):

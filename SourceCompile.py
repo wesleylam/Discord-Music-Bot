@@ -2,14 +2,14 @@ from const.helper import *
 import ServersHub
 from API.ytAPIget import yt_search_single
 from const.YTDLSource import YTDLSource, StaticSource
-from youtube_dl.utils import DownloadError
+from yt_dlp.utils import DownloadError
 from const.DBFields import SongAttr
+from const.options import ytdl_format_options
 import discord
+import yt_dlp
 
 from exceptions.DJExceptions import DJDBException, DJBannedException, DJSongNotFoundException
 from exceptions.YTDLException import YTDLException
-
-
 
 def getSource(args, newDJable = True, loud = False, baseboost = False):
     # 1. parse and search
@@ -93,7 +93,7 @@ def yt_search_and_insert(search_term, use_vID = False, insert_after = True, newD
     # no result from youtube api (by vid)
     if not info: 
         if use_vID: raise DJSongNotFoundException(f"No video found: {vid_to_url(search_term)}")
-        else: raise DJSongNotFoundException(f"Nothing found in video form: {search_term}")
+        else: raise DJSongNotFoundException(f"No result found: {search_term}")
 
     if insert_after: 
         return ServersHub.ServersHub.djdb.insert_song(info, newDJable = newDJable, query=search_term)
@@ -113,16 +113,32 @@ def scp_compile(vid, vol, loud = False, stream = True, baseboost = False):
     try:
         # search yt url
         # data = await self.bot.loop.run_in_executor(None, lambda: ServersHub.ServersHub.ytdl.extract_info(url, download=not stream))
-        data = ServersHub.ServersHub.ytdl.extract_info(url, download=not stream)
+        with yt_dlp.YoutubeDL(ytdl_format_options) as ydl:
+            data = ydl.extract_info(url, download=not stream)
+            if 'entries' in data:
+                # take first item from a playlist
+                data = data['entries'][0]
+
+            
+            if stream:
+                if 'requested_formats' in data:
+                    filename = data['requested_formats'][1]['url']  
+                elif 'url' in data:
+                    filename = data['url']
+                else:
+                    import json
+                    print("ERROR: NO URL OR REQUESTED FORMAT")
+                    f = open("/home/wesley/dev/Discord-Music-Bot/logs/ydl_extract_info.json")
+                    json.dump(data, f)
+                    f.close()
+            else: 
+                filename = ydl.prepare_filename(data)
+            ## TODO: USE Extracted info for entry data (eg: duration, title, channel)
+            
     except DownloadError as e: # youtube dl download error
         ServersHub.ServersHub.djdb.remove_song(vid)
-        raise YTDLException(f"Unable to download {url}, removed ({str(e)})")
+        raise YTDLException(f"Unable to download {url}, removed ({str(e)})\nFormat options:{ytdl_format_options}")
 
-    if 'entries' in data:
-        # take first item from a playlist
-        data = data['entries'][0]
-
-    filename = data['url'] if stream else ServersHub.ServersHub.ytdl.prepare_filename(data)
     # options for baseboosted or normal
     if baseboost or need_baseboost(data.get('title')):
         ffmpeg_final_options = ffmpeg_options.copy()
@@ -134,11 +150,11 @@ def scp_compile(vid, vol, loud = False, stream = True, baseboost = False):
     # Create source object
     if loud:
         vol = vol * loud_vol_factor
-    print(vol)
     source = YTDLSource(discord.FFmpegPCMAudio(filename, **ffmpeg_final_options), data=data, volume = vol)
     source.url = url
     source.vid = vid
-    source.duration = ServersHub.ServersHub.djdb.find_duration(vid)
+    source.duration = data["duration"] if "duration" in data else ServersHub.ServersHub.djdb.find_duration(vid)
+    ## TODO: UPDATE DURATION FROM HERE???
 
     # check valid song
     banned_reason = is_banned(source.title)

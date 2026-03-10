@@ -25,6 +25,9 @@ class SongInfo():
     def get_all_info(self):
         return getattr(self, SongAttr.vID), getattr(self, SongAttr.Title), getattr(self, SongAttr.ChannelID)
 
+    def __getitem__(cls, x):
+        return getattr(cls, x)
+    
     def stringify_info(self):
         return ", ".join([f"\"{i}\"" for i in self.get_all_info()])
     

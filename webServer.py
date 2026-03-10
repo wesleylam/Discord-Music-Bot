@@ -3,10 +3,12 @@ from flask_bootstrap import Bootstrap
 from ServersHub import ServersHub
 from const.DBFields import SongAttr
 import random
-from const.helper import vid_to_thumbnail, vid_to_embed_url, dict_compare
+import time
+from const.helper import vid_to_url, vid_to_thumbnail, vid_to_embed_url, dict_compare
 import asyncio
 from waitress import serve
 import ServerControl
+import API.ytAPIget
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -76,23 +78,35 @@ def serverPlaying(guildId):
 def djAction(guildId):
     print("DJACTION ")
     print(guildId)
-    actions = ['skip', 'leave', 'djable', 'notdjable', 'notdjable;skip']
+    actions = ['skip', 'leave', 'djable', 'notdjable', 'notdjable;skip', 'search', 'play']
     decoded = request.data.decode()
     # print(decoded)
-    actionIds, vID = decoded.split(',')
+    actionIds, vID, action_input = decoded.split(',')
     print(actionIds)
     
     response = []
+    song_choices = None
     for actionId in actionIds.split('__'):
         if actionId == 'join':
-            task: asyncio.Task = ServersHub.loop.create_task(ServersHub.DJ_BOT.dj(guildId))
-            # wait until done
-            while not task.done(): pass
+            # Thread-safe execution of async bot command from Flask thread
+            future = asyncio.run_coroutine_threadsafe(ServersHub.DJ_BOT.dj(guildId), ServersHub.loop)
+            future.result() # Wait for completion
             response.append("Joined")
             
         if actionId == 'skip':
             ServersHub.getControl(guildId).skip("WEB")
             response.append("Skipped")
+            
+        if actionId == 'search':
+            import const.SongInfo
+            songs = API.ytAPIget.yt_search_all(action_input)
+            song_choices = {song.get(SongAttr.vID): song.get(SongAttr.Title) for song in songs}
+            
+        if actionId == 'play':
+            # input will be vid
+            url = vid_to_url(action_input)
+            ServersHub.getControl(guildId).play(url, author='Web')
+            response.append(f"Queued {url}")
             
         if actionId == 'leave':
             ServersHub.getControl(guildId).disconnect()
@@ -110,11 +124,27 @@ def djAction(guildId):
     
     data = {
         'name': random.randint(100, 200),
-        'response': ";".join(response)
+        # 'response': ";".join(response),
+        'response': {
+            'top_notify': " / ".join(response),
+            'song_choices': 'null' if song_choices is None else song_choices
+        },
     }
     
     return jsonify(data)
 
+@app.post('/chat')
+def chatPost():
+    if request.form.get("user_query") != "":
+        attempt = 0
+        Chatbot.chat(request.form.get("user_query"))
+        while Chatbot.lastReply == "" and attempt <= 100:
+            time.sleep(1)
+            attempt += 1
+            
+        return render_template('chat.html', 
+                               response=res if attempt < 100 else "Err: Timed out")
+    return render_template('chat.html', response="No input")
 
 
 #################################### GET ############################################
@@ -130,10 +160,14 @@ def song(vID):
     options = build_table_options(info, headers = None)
     return render_template('index.html', table_title = getattr(item, SongAttr.Title), **options)
 
+@app.route('/chat')
+def chat():
+    return render_template('chat.html')
+    
 @app.route('/')
 def index():
     # songs will be returned as list of dictionary
-    songs = ServersHub.djdb.list_all_songs(top = None, needed_attr = None, return_song_type = None)
+    songs = ServersHub.djdb.list_all_songs(top = 50, needed_attr = None, return_song_type = None)
     for i in range(len(songs)):
         # songs[i]["Details"] = f'<a href="/song/{songs[i][SongAttr.vID]}"><button>DETAIL</button></a>'
         songs[i]["Details"] = render_template('abutton.html', url = f"/song/{songs[i][SongAttr.vID]}", text = "DETAIL")
@@ -144,8 +178,6 @@ def index():
     return render_template('index.html', 
                            activeGuilds = activeGuilds,
                            table_title = "All songs", **options)
-
-
 
 def build_table_options(info, headers = None):
     options = {}
@@ -165,7 +197,7 @@ def build_table_options(info, headers = None):
         tr = []
         if type(info[0]) == dict:
             for k in headers:
-                v = row[k]
+                v = row[k] if k in row else ''
                 tr.append(v)
         if type(info[0]) == list:
             for v in row:

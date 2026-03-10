@@ -8,7 +8,16 @@ class ViewBase():
     def playingUpdated():
         pass
     
+    def checkDisplay():
+        pass
+    
+    def suggestionUpdated(self):
+        pass
+    
     def songInfoUpdated():
+        pass
+        
+    def songAdded(self):
         pass
         
     def queueUpdated(self):

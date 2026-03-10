@@ -17,6 +17,8 @@ class ServerControl():
         self.guild = guild
         self.vcControl = VcControl.VcControl(g_id, g_name, vc, loop)
         self.viewsList: ViewsList = ViewsList()
+        self.counting_song = ""
+        self.counting_start_time = time.time()
         self.addView(ViewWeb())
         self.addView(ViewDis(g_id, message_channel, loop))
         
@@ -63,8 +65,8 @@ class ServerControl():
         self.vcControl.addSong(source, song_info, author, insert = insert)
 
         # View control
-        self.viewsList.queueUpdated()
-        # self.viewsList.songAdded(song_info)
+        if author != VcControl.DJAuthor:
+            self.viewsList.songAdded(song_info)
 
     def skip(self, author=None):
         self.vcControl.skip(author)
@@ -77,10 +79,14 @@ class ServerControl():
         self.viewsList.queueUpdated()
         
         
-    def remove(self, song_info):
-        self.vcControl.remove(song_info, author=None)
+    def remove(self, song_info, author=None):
+        self.vcControl.remove(song_info, author=author)
         self.viewsList.queueUpdated()
         
+    def remove_at(self, index, author=None):
+        self.vcControl.remove_at(index, author=author)
+        self.viewsList.queueUpdated()
+
     def clear(self):
         self.vcControl.clear()
         self.viewsList.queueUpdated()
@@ -96,7 +102,7 @@ class ServerControl():
     
                 
     # ----------------------------- RECEIVE UPDATE ------------------------------ # 
-    def songStarted(self, vID: str):        
+    def songStarted(self, vID: str):
         self.counting_song = vID
         self.counting_start_time = time.time()
         # NEED TO ENSURE IT IS QUEUED BY PLAYER TO ADD TO QCOUNT
@@ -107,6 +113,16 @@ class ServerControl():
         if self.counting_song and self.counting_start_time and self.counting_song == vID:
             ServersHub.ServersHub.djdb.update_duration(vID, time.time() - self.counting_start_time)
         self.viewsList.playingUpdated()
+        
+    def display_nowplaying(self, ):
+        ## udpate view playbox
+        self.viewsList.playingUpdated()
+        
+    def verifyDisplay(self):
+        self.viewsList.checkDisplay()
+        
+    def suggestionUpdated(self):
+        self.viewsList.suggestionUpdated()
     
     # ----------------------------- REQUEST INFO ------------------------------ # 
     def getNowplaying(self):
@@ -115,6 +131,15 @@ class ServerControl():
     def getPlayingInfo(self):
         return self.vcControl.getPlayingInfo()
     
+    def getSuggestions(self):
+        return self.vcControl.getSuggestions()
+    
+    async def fetchSuggestions(self, songInfo: SongInfo):
+        return await ServersHub.ServersHub.loop.run_in_executor(None, self.vcControl.get_suggestions_from_api, songInfo)
+
+    async def fetchRandomSongs(self, n=10):
+        return await ServersHub.ServersHub.loop.run_in_executor(None, ServersHub.ServersHub.djdb.find_rand_songs, n)
+
     def updatePlayingInfo(self):
         self.vcControl.updatePlayingInfo()
     
@@ -147,6 +172,17 @@ class ViewsList():
         print("PLAYING UPDATED")
         for v in self.views:
             v.playingUpdated()
+        pass
+    
+    def checkDisplay(self):
+        for v in self.views:
+            v.checkDisplay()
+        pass
+    
+    def suggestionUpdated(self):
+        print("SUGGESTIONS UPDATED")
+        for v in self.views:
+            v.suggestionUpdated()
         pass
     
     def songInfoUpdated(self):
@@ -183,6 +219,9 @@ class ViewsList():
         pass
     
     def songAdded(self, song: SongInfo):
+        for v in self.views:
+            v.songAdded(song)
+        self.queueUpdated()
         pass
     
     def updateSongInfo(self, new_song_info: SongInfo):
