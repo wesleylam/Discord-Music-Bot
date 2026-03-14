@@ -1,8 +1,10 @@
-requests
-discord
-discord_components
-mysql_connector_repackaged
+discord.py==2.3.2
+discord.py[voice]
 yt-dlp
 boto3
-waitress
-PyNaCl
+aiohttp
+pytz
+requests
+
+ollama
+python-dotenv

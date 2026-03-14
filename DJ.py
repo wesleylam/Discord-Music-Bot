@@ -3,13 +3,14 @@ import discord
 from discord.ext import commands
 import discord.ext
 import time
+import asyncio
+from dotenv import load_dotenv
 
 from Views import Views
 from API.tenorAPIget import get_tenor_gif
 import ServersHub
 
 from const.helper import *
-from const.config import *
 from const.options import *
 from Chatbot import Chatbot
 
@@ -19,10 +20,10 @@ class DJCog(commands.Cog):
         self.Hub: ServersHub.ServersHub = Hub
 
     # ---------------------------- MESSAGING --------------------------- # 
-    async def notify(self, ctx, message, del_sec = 10):
+    async def notify(self, ctx, message, del_sec = 10, file=None):
         if str(message) == "": return # prevent err
 
-        m = await ctx.send(message)
+        m = await ctx.send(message, file=file)
         
         # delete the message if needed
         if m != None and del_sec:
@@ -89,7 +90,9 @@ class DJCog(commands.Cog):
             
         if guild.voice_client is None:
             vc = get_channel_to_join(voice_channels, author=author)
+            print("connecting to vc")
             await vc.connect()
+            print("connected vc")
             if not silence:
                 # show patch note
                 await message_channel.send( embed = self.makePatchnoteEmbedded() )
@@ -149,7 +152,7 @@ class DJCog(commands.Cog):
             
     # ----------------------------- PLAY VARIANT ------------------------------ # 
     # COMMAND: dj
-    @commands.command()
+    @commands.command(aliases=['d'])
     async def dj(self, ctx, dj_type = True):
         '''Turn on DJ'''
         if type(ctx) == str or ctx.voice_client is None: # if sent from discord (i.e. context given), check vc exist first :
@@ -371,6 +374,9 @@ class DJCog(commands.Cog):
 # -------------------------------------------- MAIN ------------------------------------------------ # 
 
 async def startDJ():
+    load_dotenv()
+    TOKEN = os.getenv("DISCORD_TOKEN")
+
     # set ffmpeg error log file
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
     # -http_persistent 0
@@ -386,7 +392,7 @@ async def startDJ():
     bot = commands.Bot(command_prefix="=", case_insensitive=True, 
                         description='DJ', intents=intents)
     
-    import ServersHub
+    ServersHub.ServersHub.loop = asyncio.get_running_loop()
     try: 
         Chatbot.init()
         DJbot = DJCog(bot, ServersHub.ServersHub)
@@ -394,9 +400,19 @@ async def startDJ():
         ServersHub.ServersHub.DJ_BOT = DJbot
         await bot.start(TOKEN) 
     except Exception as e:
-        await bot.close()
-        raise e
+        print(f"An error occurred: {e}")
+    finally:
+        if not bot.is_closed():
+            await bot.close()
 
 if __name__ == "__main__":
-    startDJ()
+    import asyncio
+    import DJDynamoDB
 
+    ServersHub.ServersHub.djdb = DJDynamoDB.DJDB()
+    ServersHub.ServersHub.djdb.connect()
+
+    try:
+        asyncio.run(startDJ())
+    except KeyboardInterrupt:
+        print("\nShutdown requested. Exiting.")

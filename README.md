@@ -1,13 +1,19 @@
-# TODO: REWRITE README FOR DJ2.0
 # Discord mini music bot
 Built using Python 3.7.7 with AWS DynamoDB
+
+## Entry Point
+- `python DJ.py`
+- docker
+    - `docker build -t discord-music-bot .`
+    - `docker run -it -d --name discord-music-bot --env-file .env discord-music-bot`
+
 
 ## Required modules
 - boto3
 - discord.py
 - discord_components
 - discord.py[voice] (pycparser, cffi, six, PyNaCl)
-- youtube-dl
+- ytdlp
 - ffmpeg
 - opus (Not required in windows environment: https://discordpy.readthedocs.io/en/latest/api.html#discord.opus.load_opus)
 - pytz (timezone)

@@ -2,11 +2,13 @@ import ollama
 from datetime import datetime
 from const import helper
 import time
+import os
 import asyncio
 import ServersHub
 
 class Chatbot():
-    CLIENT = ollama.Client(timeout=40)
+    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    CLIENT = ollama.Client(host=OLLAMA_HOST, timeout=40)
     LOG_PATH = "./logs/chatbot.log"
     MODEL = "gemma3"
     class Queue():

@@ -98,8 +98,8 @@ class VcControl():
         
         last_playing = time.time()
         while(self.vc is not None):
-            ## log last playing, force quit if not playing over 60 secs
-            if self.vc.is_playing():
+            # Reset idle timer if playing or if songs are in the queue
+            if self.vc.is_playing() or len(self.songManager.getPlaylist()) > 0:
                 last_playing = time.time()
             if time.time() - last_playing > 60:
                 print("SEVERE: NOT PLAYING OVER 60 sec, FORCE QUITING EXECTION LOOP")
