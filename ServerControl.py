@@ -1,5 +1,5 @@
 import VcControl
-from DJDB import DJDB
+from db.DJDB import DJDB
 from ViewBase import ViewBase
 import SourceCompile
 import ServersHub

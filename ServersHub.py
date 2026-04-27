@@ -1,5 +1,5 @@
 import ServerControl
-from DJDB import DJDB
+from db.DJDB import DJDB
 from const.options import ytdl_format_options
 
 # static class for global

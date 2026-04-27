@@ -11,5 +11,9 @@ tenor_API_key = ""
 opus_dir = ""
 
 # dynamodb table name
-dynamodb_table = ""
-dynamodb_hist_table = ""
+dynamodb_table = "DJsongs"
+dynamodb_hist_table = "DJHistory"
+
+# db backend: "DynamoDB" or "SqliteDB"
+db_backend = "SqliteDB"
+sqlite_db_path = "djbot.db"

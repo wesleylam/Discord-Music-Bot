@@ -398,5 +398,13 @@ async def startDJ():
         raise e
 
 if __name__ == "__main__":
-    startDJ()
+    import asyncio
+    from db.DJDB import DJDB
 
+    ServersHub.ServersHub.djdb = DJDB()
+    ServersHub.ServersHub.djdb.connect()
+
+    try:
+        asyncio.run(startDJ())
+    except KeyboardInterrupt:
+        print("\nShutdown requested. Exiting.")

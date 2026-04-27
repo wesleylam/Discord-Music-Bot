@@ -113,7 +113,7 @@ class VcControl():
                 self.djReadied = None
                 error_log_e(e)
             
-        print("Exec Loop ended", self.vc)        
+        print("Exec Loop ended", self.vc)
         self.started = False
 
     async def exec(self):

@@ -2,7 +2,7 @@ import asyncio
 import DJ
 import webServer
 import ServersHub
-import DJDB
+from db import DJDB
 import Chatbot
 
 async def main():

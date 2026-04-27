@@ -1,6 +1,7 @@
 import importlib
+from const.config import db_backend
 
-dbModuleName = "DynamoDB"
+dbModuleName = db_backend
 dbModulePath = f"db.{dbModuleName}"
 
 dbModule = importlib.import_module(dbModulePath)

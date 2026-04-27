@@ -52,7 +52,7 @@ class DynamoDB(DJDBInterface) :
 
         try:
             item = response['Item']
-            return DJDB.dbItemToSongInfo(item)
+            return DynamoDB.dbItemToSongInfo(item)
         except KeyError as e:
             raise DJDBException(f"No item for vID: {vID}")
 
@@ -180,7 +180,7 @@ class DynamoDB(DJDBInterface) :
 
         # add to db
         self.table.put_item(Item = item)
-        return DJDB.dbItemToSongInfo(item), True
+        return DynamoDB.dbItemToSongInfo(item), True
 
     # remove song and all its queries
     def remove_song(self, vid):
@@ -308,7 +308,7 @@ class DynamoDB(DJDBInterface) :
 
         songs = []
         for item in chosen_items:
-            songs.append(DJDB.dbItemToSongInfo(item))
+            songs.append(DynamoDB.dbItemToSongInfo(item))
         return songs
 
 
@@ -511,7 +511,7 @@ class DynamoDB(DJDBInterface) :
 
 if __name__ == "__main__":
     ## TESTING Connection
-    a = DJDB()
+    a = DynamoDB()
     a.connect()
     a.db_get("", [SongAttr.Duration])
     pass
