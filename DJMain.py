@@ -1,17 +1,17 @@
 import asyncio
 import DJ
-import webServer 
+import webServer
 import ServersHub
-import DJDynamoDB
+import DJDB
 import Chatbot
 
 async def main():
     print("Starting gather")
-    ServersHub.ServersHub.djdb = DJDynamoDB.DJDB()
+    ServersHub.ServersHub.djdb = DJDB.DJDB()
     ServersHub.ServersHub.djdb.connect()
     # Capture the running loop for thread-safe operations in other modules
     ServersHub.ServersHub.loop = asyncio.get_running_loop()
-    
+
     try:
         await asyncio.gather(
             DJ.startDJ(),
