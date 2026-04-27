@@ -2,6 +2,7 @@ import asyncio
 from ViewBase import ViewBase
 import ViewDisMes
 from const import SongInfo
+from const.config import ChatbotEnabled
 from const.DBFields import SongAttr
 import ServersHub
 from const.helper import *
@@ -93,9 +94,10 @@ class ViewDis(ViewBase):
             except e:
                 error_log_e(e)
                 
-        # ASYNC CHATBOT
-        Chatbot.djUpdate(f"{author} played {title}")
-        asyncio.create_task(self.waitAndSendRes())
+        if ChatbotEnabled:
+            # ASYNC CHATBOT
+            Chatbot.djUpdate(f"{author} played {title}")
+            asyncio.create_task(self.waitAndSendRes())
 
         ## Send view box
         self.playbox_message = await self.message_channel.send(f"{message}", view=self.playbox_view)

@@ -1,14 +1,13 @@
 import ollama
 from datetime import datetime
+from const.config import ChatbotEnabled
 from const import helper
 import time
-import asyncio
-import ServersHub
 
 class Chatbot():
     CLIENT = ollama.Client(timeout=40)
     LOG_PATH = "./logs/chatbot.log"
-    MODEL = "gemma3"
+    MODEL = "gemma4"
     class Queue():
         def __init__(self):
             self.q: list = []
@@ -22,6 +21,9 @@ class Chatbot():
     queue = Queue()
     
     def parserLoop():
+        if not ChatbotEnabled:
+            return
+        
         while True:
             item = Chatbot.queue.pop()
             if (item == None): 
@@ -83,7 +85,13 @@ class Chatbot():
         Chatbot.lastReply = ""
         
     def chat(prompt, role='user', func=lambda res: {}):
+        if not ChatbotEnabled:
+            return
+        
         Chatbot.queue.add((prompt, role, func))
     
     def djUpdate(message, func=lambda res: {}):
+        if not ChatbotEnabled:
+            return
+        
         return Chatbot.chat("New song incoming, info:" + message, role="system", func=func)

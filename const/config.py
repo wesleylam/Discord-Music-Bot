@@ -17,3 +17,6 @@ dynamodb_hist_table = "DJHistory"
 # db backend: "DynamoDB" or "SqliteDB"
 db_backend = "SqliteDB"
 sqlite_db_path = "djbot.db"
+
+# opt in chatbot
+ChatbotEnabled = False

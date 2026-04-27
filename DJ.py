@@ -369,7 +369,10 @@ class DJCog(commands.Cog):
         raise e
 
 # -------------------------------------------- MAIN ------------------------------------------------ # 
-
+async def startDjStandalone():
+    ServersHub.ServersHub.loop = asyncio.get_running_loop()
+    await startDJ()
+    
 async def startDJ():
     # set ffmpeg error log file
     os.environ['FFREPORT'] = f'file={ffmpeg_error_log}:level=16'
@@ -405,6 +408,6 @@ if __name__ == "__main__":
     ServersHub.ServersHub.djdb.connect()
 
     try:
-        asyncio.run(startDJ())
+        asyncio.run(startDjStandalone())
     except KeyboardInterrupt:
         print("\nShutdown requested. Exiting.")
