@@ -1,5 +1,5 @@
 import ServerControl
-from DJDynamoDB import DJDB
+from DJDB import DJDB
 from const.options import ytdl_format_options
 
 # static class for global
@@ -7,21 +7,20 @@ class ServersHub():
     djdb: DJDB = None
     serverControls: dict[str, ServerControl.ServerControl]= {} # guild.id: vcControl object
     DJ_BOT = None
-    
+
     # asyncio loop: for async func
     loop = None
 
     # at the moment this can only be called from discord instance
     # will require reverse vc getter if we want to initiate from web instance
     def add(guild, vc, message_channel):
-        g_id: str = guild.id 
+        g_id: str = guild.id
         serverControl = ServerControl.ServerControl(vc, guild, message_channel, ServersHub.loop)
         ServersHub.serverControls[str(g_id)] = serverControl
 
-        
+
     def getControl(id) -> ServerControl.ServerControl:
         return ServersHub.serverControls[str(id)] if str(id) in ServersHub.serverControls else None
-        
+
     def getAllControls() -> dict[str, ServerControl.ServerControl]:
         return ServersHub.serverControls
-    

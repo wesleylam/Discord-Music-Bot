@@ -6,13 +6,14 @@ from const.SongInfo import SongInfo
 import random
 from const.DBFields import SongAttr, HistAttr
 from const.helper import error_log, error_log_e, get_time, vid_to_thumbnail, chop_query
+from db.DJDBInterface import DJDBInterface
 
 # aws
 import boto3
 from boto3.dynamodb.conditions import Attr
 
 
-class DJDB():
+class DynamoDB(DJDBInterface) :
     def __init__(self) -> None:
         self.dynamodb = boto3.resource('dynamodb')
 
@@ -23,7 +24,7 @@ class DJDB():
     def disconnect(self):
         # no need disconnect?
         pass
-    
+
     def dbItemToSongInfo(item) -> SongInfo:
         song = SongInfo(item[SongAttr.vID], item[SongAttr.Title], item[SongAttr.ChannelID])
         if SongAttr.SongVol in item:
@@ -32,23 +33,21 @@ class DJDB():
             if attr in item:
                 setattr(song, attr, item[attr])
         return song
-            
 
-    # ------------------------ PRIVATE: DB direct actions --------------------------- # 
-    # ** no longer private (used in DJ/songinfo) **
+
     def db_get(self, vID, get_attrs = None) -> SongInfo:
-        # get        
+        # get
         if get_attrs:
             #### Need vid, title and channelid to create songinfo obj
             ### TODO: refactor to not require this
             if SongAttr.vID not in get_attrs: get_attrs.append(SongAttr.vID)
             if SongAttr.Title not in get_attrs: get_attrs.append(SongAttr.Title)
             if SongAttr.ChannelID not in get_attrs: get_attrs.append(SongAttr.ChannelID)
-            response = self.table.get_item( 
-                Key={ 'vID': vID }, 
-                AttributesToGet = get_attrs 
+            response = self.table.get_item(
+                Key={ 'vID': vID },
+                AttributesToGet = get_attrs
             )
-        else: 
+        else:
             response = self.table.get_item( Key={ 'vID': vID } )
 
         try:
@@ -56,13 +55,13 @@ class DJDB():
             return DJDB.dbItemToSongInfo(item)
         except KeyError as e:
             raise DJDBException(f"No item for vID: {vID}")
-            
 
+    # ------------------------ PRIVATE: DB direct actions --------------------------- #
     def db_scan(self, vID, get_attrs = None):
         pass
 
     # update one attr for a song (vID)
-    def db_update(self, vID, attr, val):
+    def _db_update(self, vID, attr, val):
         # update
         self.table.update_item(
             Key={ 'vID': vID },
@@ -72,11 +71,11 @@ class DJDB():
         )
 
 
-    def match_query_action(self, query, match_return = None, 
+    def match_query_action(self, query, match_return = None,
         q_match_break = False, action_after_q_match = (lambda : None), action_after_v_match = (lambda : None)):
 
         # if match return, cannot reach break
-        assert match_return is not None and not q_match_break 
+        assert match_return is not None and not q_match_break
 
         # scan all songs' queries
         response = self.table.scan(
@@ -104,28 +103,28 @@ class DJDB():
 
                         # action after each match
                         action_after_q_match()
-                        
+
                         # return > break
                         if match_return: return match_return
                         if q_match_break: break
-            
+
             return None
 
-    # ------------------------ PUBLIC: DB direct actions --------------------------- # 
+    # ------------------------ PUBLIC: DB direct actions --------------------------- #
     # insert / update search
     def add_query(self, query, songInfo, song_exist = False):
         # use vID to create new songinfo
         # MUST have existing entry in db
         if type(songInfo) != SongInfo:
             songInfo = SongInfo(songInfo, "", "")
-            song_exist = True 
+            song_exist = True
 
         # add song to db (if not exist)
-        if not song_exist: 
+        if not song_exist:
             song, inserted = self.insert_song(songInfo)
         else:
             song = self.db_get(vID, [SongAttr.Queries])
-            
+
         vID = songInfo.vID
 
         # transform query into tokens
@@ -135,7 +134,7 @@ class DJDB():
         for q in song.get(SongAttr.Queries):
             if q == query_words:
                 # skip: duplicate
-                return 
+                return
 
         # append the query if it is not duplicate
         self.table.update_item(
@@ -149,7 +148,7 @@ class DJDB():
     def remove_query_binding(self, vID, query):
         # get all queries
         song = self.db_get(vID, [SongAttr.Queries])
-        try: 
+        try:
             i = song.get(SongAttr.Queries).index(query)
         except ValueError as e:
             raise DJDBException(f"No query ({query}) binded for video ({vID}): {e.message}")
@@ -171,7 +170,7 @@ class DJDB():
         print(f"Song not found {songInfo.vID} in DB, inserting to DB")
 
         # get all info and default parameters
-        item = songInfo.dictify_info()    
+        item = songInfo.dictify_info()
         item[SongAttr.STitle] = item[SongAttr.Title].lower()
         item[SongAttr.Queries] = [] if query == None else [ [chop_query(query.lower())] ]
         item[SongAttr.DJable] = newDJable
@@ -193,12 +192,12 @@ class DJDB():
             FilterExpression = Attr(HistAttr.vID).eq(vid),
         )
         items = response['Items'] # items: list of dict
-        for item in items: 
+        for item in items:
             self.hist_table.delete_item(
                 Key = {HistAttr.Time: item[HistAttr.Time]},
             )
 
-    # --------------------------- Song info upate ---------------------------- # 
+    # --------------------------- Song info upate ---------------------------- #
     def switch_djable(self, vID):
         # flip djable param
         old_djable = self.find_djable(vID)
@@ -210,7 +209,7 @@ class DJDB():
 
     def set_djable(self, vID, djable = True):
         # update
-        self.db_update(vID, SongAttr.DJable, djable)
+        self._db_update(vID, SongAttr.DJable, djable)
 
 
     # update duration info
@@ -220,11 +219,11 @@ class DJDB():
         except DJDBException as e:
             # possible cause: delete from db and try to update
             error_log("Cannot update duration: " + e.message)
-            return 
+            return
 
         print(f"Updating duration for {vID}: {duration}")
         if old_duration == 0 or old_duration != duration:
-            self.db_update(vID, SongAttr.Duration, int(duration))
+            self._db_update(vID, SongAttr.Duration, int(duration))
 
 
     def increment_qcount(self, vID):
@@ -255,16 +254,16 @@ class DJDB():
     def remove_tag(self):
         pass
 
-    # ------------------------------- Queries ------------------------------- # 
+    # ------------------------------- Queries ------------------------------- #
     def find_djable(self, vID) -> bool:
-        try: 
+        try:
             return self.db_get(vID, [SongAttr.DJable])[SongAttr.DJable]
         except (DJDBException, ClientError) as e:
             error_log("cannot find djable: " + str(e.message if hasattr(e, 'message') else e))
             return None
 
     def find_duration(self, vID) -> int:
-        try: 
+        try:
             returned_song = self.db_get(vID, [SongAttr.Duration])
             return returned_song[SongAttr.Duration]
         except DJDBException as e:
@@ -301,10 +300,10 @@ class DJDB():
 
         response = self.table.scan(**scan_kwargs)
         items = response['Items'] # items: list of dict
-        
+
         if len(items) == 0:
             return []
-            
+
         chosen_items = random.sample(items, min(len(items), n))
 
         songs = []
@@ -315,7 +314,7 @@ class DJDB():
 
     # query song
     def find_song_match(self, vID):
-        try: 
+        try:
             return self.db_get(vID)
         except DJDBException as e:
             # vID not in db
@@ -365,7 +364,7 @@ class DJDB():
             scan_params["FilterExpression"] = Attr(SongAttr.DJable).eq(dj)
         if top is not None:
             scan_params["Limit"] = top
-        
+
         # get all attr if not specified
         if needed_attr is not None and len(needed_attr) > 0:
             needed_attr_str = ", ".join( needed_attr )
@@ -383,7 +382,7 @@ class DJDB():
                 return [ [ item[a] for a in needed_attr ] for item in topItems ]
             else: # list of dictionary
                 return topItems
-            
+
 
     # search songs by title and queries
     def search(self, search_term, top = 10):
@@ -405,7 +404,7 @@ class DJDB():
         else:
             title_searched_vids = [ item[SongAttr.vID] for item in items[:top] ]
             title_searched_songs = [ SongInfo(item[SongAttr.vID], item[SongAttr.Title], item[SongAttr.ChannelID], vid_to_thumbnail(item[SongAttr.vID])) for item in items[:top] ]
-        
+
         ############## search by queries
         # scan all songs' queries
         response = self.table.scan(
@@ -424,16 +423,16 @@ class DJDB():
                 # skip songs matched title
                 if item[SongAttr.vID] in title_searched_vids:
                     continue
-                
+
                 if SongAttr.Queries in item:
                     for song_query in item[SongAttr.Queries]:
                         # match query
                         if any(word in song_query for word in query_words):
-                            query_searched_songs.append( 
+                            query_searched_songs.append(
                                 SongInfo(
-                                    item[SongAttr.vID], 
-                                    f"{item[SongAttr.Title]} [{'/'.join(song_query)}]", 
-                                    item[SongAttr.ChannelID], 
+                                    item[SongAttr.vID],
+                                    f"{item[SongAttr.Title]} [{'/'.join(song_query)}]",
+                                    item[SongAttr.ChannelID],
                                     vid_to_thumbnail(item[SongAttr.vID])
                                 )
                             )
@@ -445,7 +444,7 @@ class DJDB():
             # no match
             return title_searched_songs + query_searched_songs
 
-# ------------------ History ------------------- # 
+# ------------------ History ------------------- #
     def add_history(self, vID, serverID, serverName, player):
         item = dict()
         item[HistAttr.Time] = str(get_time())
@@ -460,22 +459,22 @@ class DJDB():
     # get top history ranked by times played
     def get_hist_rank(self, serverID = None, dj = False, top = 20):
         filter = None
-        if serverID: 
-            filter = Attr(HistAttr.ServerID).eq(serverID) 
-        if dj: 
+        if serverID:
+            filter = Attr(HistAttr.ServerID).eq(serverID)
+        if dj:
             filter = (filter & Attr(HistAttr.Player).eq("DJ")) if filter else Attr(HistAttr.Player).eq("DJ")
-        
-        if filter: 
+
+        if filter:
             response = self.hist_table.scan(
                 FilterExpression = filter,
                 ProjectionExpression = f'{HistAttr.vID}'
             )
-        else: 
+        else:
             response = self.hist_table.scan(
                 ProjectionExpression = f'{HistAttr.vID}'
             )
         items = response['Items'] # items: list of dict
-        
+
         if len(items) <= 0:
             # no DJ history at all
             return None
@@ -488,7 +487,7 @@ class DJDB():
                 else:
                     rank[item_vID] += 1
             print(rank)
-                
+
             # (vID, song title, times played)
             ranked_DJ_history = [ (vID, self.db_get(vID, [SongAttr.Title])[SongAttr.Title], times ) for vID, times in sorted(rank.items(), key=lambda song: song[1], reverse=True) ]
             return ranked_DJ_history
@@ -497,7 +496,7 @@ class DJDB():
 
     def get_hist_count(self, vID, serverID = None, dj = False):
         filter = Attr(HistAttr.vID).eq(vID)
-        if serverID: filter = filter & Attr(HistAttr.ServerID).eq(serverID) 
+        if serverID: filter = filter & Attr(HistAttr.ServerID).eq(serverID)
         if dj: filter = filter & Attr(HistAttr.Player).eq("DJ")
 
         response = self.hist_table.scan(
@@ -505,7 +504,7 @@ class DJDB():
         )
 
         items = response['Items'] # items: list of dict
-        
+
         return len(items)
 
 
